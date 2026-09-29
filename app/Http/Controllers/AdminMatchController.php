@@ -53,6 +53,7 @@ class AdminMatchController extends Controller
         $validated = $request->validate([
             'location_address' => ['required', 'string', 'max:255'],
             'venue_name' => ['nullable', 'string', 'max:160'],
+            'notes' => ['nullable', 'string', 'max:1000'],
             'starts_at' => ['required', 'date'],
             'status' => ['required', Rule::in(['open', 'confirmed', 'cancelled', 'completed'])],
             'is_public' => ['nullable', 'boolean'],
@@ -65,6 +66,9 @@ class AdminMatchController extends Controller
             'location_address' => trim($validated['location_address']),
             'venue_name' => filled($validated['venue_name'] ?? null)
                 ? trim((string) $validated['venue_name'])
+                : null,
+            'notes' => filled($validated['notes'] ?? null)
+                ? trim((string) $validated['notes'])
                 : null,
             'starts_at' => $validated['starts_at'],
             'status' => $validated['status'],
