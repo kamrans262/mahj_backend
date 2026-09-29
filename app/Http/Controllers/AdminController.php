@@ -182,13 +182,18 @@ class AdminController extends Controller
 
     private function validatePlan(Request $request, ?SubscriptionPlan $plan = null): array
     {
+        $slugRule = Rule::unique('subscription_plans', 'slug');
+        if ($plan !== null) {
+            $slugRule->ignore($plan->id);
+        }
+
         return $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'slug' => [
-                'nullable',
+                'required',
                 'string',
                 'max:120',
-                Rule::unique('subscription_plans', 'slug')->ignore($plan?->id),
+                $slugRule,
             ],
             'description' => ['nullable', 'string', 'max:255'],
             'price_cents' => ['required', 'integer', 'min:0'],
