@@ -18,7 +18,18 @@ class AdminPanelTest extends TestCase
         $this->actingAs($admin)
             ->get('/admin')
             ->assertOk()
-            ->assertSeeText('Users & Accounts');
+            ->assertSeeText('Manage users')
+            ->assertSeeText('Manage subscriptions');
+
+        $this->actingAs($admin)
+            ->get('/admin/users')
+            ->assertOk()
+            ->assertSeeText('Manage user');
+
+        $this->actingAs($admin)
+            ->get('/admin/subscriptions')
+            ->assertOk()
+            ->assertSeeText('User memberships');
 
         $this->actingAs($admin)
             ->patch('/admin/users/'.$user->id, [
