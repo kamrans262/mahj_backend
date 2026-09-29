@@ -248,7 +248,7 @@ class AdminController extends Controller
             'description' => ['nullable', 'string', 'max:255'],
             'price_dollars' => ['required', 'numeric', 'min:0', 'max:99999'],
             'trial_days' => ['required', 'integer', 'min:0', 'max:365'],
-            'stripe_price_id' => ['nullable', 'string', 'max:255'],
+            'stripe_price_id' => ['nullable', 'string', 'max:255', 'regex:/^price_[A-Za-z0-9_]+$/'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
