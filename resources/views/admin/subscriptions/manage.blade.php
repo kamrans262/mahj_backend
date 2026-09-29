@@ -76,3 +76,4 @@
 <div class="hint" style="margin-top:18px">
     <b>Status guide:</b> Free trial = inside trial period. Active = full membership access. Payment issue = billing problem. Canceled = subscription no longer active.
 </div>
+@endsection
