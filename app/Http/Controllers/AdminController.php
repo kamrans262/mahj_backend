@@ -216,12 +216,16 @@ class AdminController extends Controller
             'cancel_at_period_end' => ['nullable', 'boolean'],
         ]);
 
+        $existing = UserSubscription::query()
+            ->where('user_id', $validated['user_id'])
+            ->first();
+
         UserSubscription::query()->updateOrCreate(
             ['user_id' => $validated['user_id']],
             [
                 'subscription_plan_id' => $validated['subscription_plan_id'],
                 'status' => $validated['status'],
-                'provider' => 'manual',
+                'provider' => $existing?->provider ?? 'manual',
                 'trial_ends_at' => $validated['trial_ends_at'] ?? null,
                 'current_period_ends_at' => $validated['current_period_ends_at'] ?? null,
                 'cancel_at_period_end' => $request->boolean('cancel_at_period_end'),
