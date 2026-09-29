@@ -39,10 +39,18 @@ class AdminMatchesTest extends TestCase
             ->assertSeeText($host->email);
 
         $this->actingAs($admin)
-            ->patch('/admin/matches/'.$match->id, ['status' => 'cancelled'])
+            ->patch('/admin/matches/'.$match->id, [
+                'location_address' => $match->location_address,
+                'venue_name' => 'Updated Court',
+                'starts_at' => $match->starts_at->format('Y-m-d H:i:s'),
+                'status' => 'cancelled',
+                'is_public' => '1',
+            ])
             ->assertRedirect();
 
-        $this->assertSame('cancelled', $match->refresh()->status);
+        $match->refresh();
+        $this->assertSame('cancelled', $match->status);
+        $this->assertSame('Updated Court', $match->venue_name);
         $this->assertNotNull($match->cancelled_at);
     }
 }
