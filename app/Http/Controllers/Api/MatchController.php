@@ -29,6 +29,7 @@ class MatchController extends Controller
                     ->orWhere('host_user_id', $user->id)
                     ->orWhereHas('players', fn ($query) => $query->whereKey($user->id));
             })
+            ->whereIn('status', ['open', 'confirmed'])
             ->where('starts_at', '>=', now()->subHours(3))
             ->orderBy('starts_at')
             ->limit(100)
