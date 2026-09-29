@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminMatchController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/admin');
@@ -20,6 +21,11 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::get('/users/{user}', [AdminController::class, 'user'])->name('users.show');
         Route::patch('/users/{user}', [AdminController::class, 'updateUser'])->name('users.update');
         Route::delete('/users/{user}', [AdminController::class, 'deleteUser'])->name('users.delete');
+
+        Route::get('/matches', [AdminMatchController::class, 'index'])->name('matches');
+        Route::get('/matches/{match}', [AdminMatchController::class, 'show'])->name('matches.show');
+        Route::patch('/matches/{match}', [AdminMatchController::class, 'update'])->name('matches.update');
+        Route::delete('/matches/{match}', [AdminMatchController::class, 'destroy'])->name('matches.delete');
 
         Route::get('/subscriptions', [AdminController::class, 'subscriptions'])->name('subscriptions');
         Route::get('/subscriptions/users/{user}', [AdminController::class, 'subscriptionUser'])
