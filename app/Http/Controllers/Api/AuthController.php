@@ -150,6 +150,12 @@ class AuthController extends Controller
             ]);
         }
 
+        if ($user->is_suspended) {
+            throw ValidationException::withMessages([
+                'email' => ['This account has been suspended. Contact support for help.'],
+            ]);
+        }
+
         return response()->json([
             'token' => $user->createToken('mobile')->plainTextToken,
             'user' => (new UserResource($user))->resolve($request),
