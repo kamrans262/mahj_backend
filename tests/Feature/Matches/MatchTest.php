@@ -44,6 +44,27 @@ class MatchTest extends TestCase
         ]);
     }
 
+    public function test_public_active_matches_are_available_for_discovery(): void
+    {
+        $host = User::factory()->create();
+        $viewer = User::factory()->create();
+        $openMatch = $this->createMatch($host);
+        $cancelledMatch = $this->createMatch($host);
+        $cancelledMatch->update([
+            'status' => 'cancelled',
+            'cancelled_at' => now(),
+        ]);
+
+        $response = $this->actingAs($viewer, 'sanctum')
+            ->getJson('/api/matches')
+            ->assertOk();
+
+        $ids = collect($response->json('data'))->pluck('id');
+
+        $this->assertTrue($ids->contains((string) $openMatch->id));
+        $this->assertFalse($ids->contains((string) $cancelledMatch->id));
+    }
+
     public function test_match_confirms_automatically_when_fourth_player_joins(): void
     {
         $host = User::factory()->create();
