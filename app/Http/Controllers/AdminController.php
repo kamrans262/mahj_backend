@@ -57,12 +57,31 @@ class AdminController extends Controller
         return redirect()->route('admin.login');
     }
 
-    public function dashboard(Request $request): View
+    public function dashboard(): View
+    {
+        return view('admin.dashboard', [
+            'stats' => $this->stats(),
+            'recentUsers' => User::query()
+                ->where('is_admin', false)
+                ->with('subscription.plan')
+                ->latest('id')
+                ->limit(6)
+                ->get(),
+            'recentSubscriptions' => UserSubscription::query()
+                ->with(['user', 'plan'])
+                ->latest('updated_at')
+                ->limit(6)
+                ->get(),
+        ]);
+    }
+
+    public function users(Request $request): View
     {
         $search = trim((string) $request->query('search'));
 
         $users = User::query()
-            ->with(['subscription.plan'])
+            ->where('is_admin', false)
+            ->with('subscription.plan')
             ->when($search !== '', fn ($query) => $query->where(function ($query) use ($search): void {
                 $query->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%");
@@ -71,25 +90,18 @@ class AdminController extends Controller
             ->limit(100)
             ->get();
 
-        $plans = SubscriptionPlan::query()->orderBy('sort_order')->orderBy('id')->get();
-        $subscriptions = UserSubscription::query()
-            ->with(['user', 'plan'])
-            ->latest('id')
-            ->limit(100)
-            ->get();
-
-        return view('admin.dashboard', [
+        return view('admin.users.index', [
             'users' => $users,
-            'plans' => $plans,
-            'subscriptions' => $subscriptions,
             'search' => $search,
-            'stats' => [
-                'users' => User::query()->where('is_admin', false)->count(),
-                'verified' => User::query()->whereNotNull('email_verified_at')->where('is_admin', false)->count(),
-                'trialing' => UserSubscription::query()->where('status', 'trialing')->count(),
-                'active' => UserSubscription::query()->where('status', 'active')->count(),
-            ],
+            'totalUsers' => User::query()->where('is_admin', false)->count(),
         ]);
+    }
+
+    public function user(User $user): View
+    {
+        $user->load('subscription.plan');
+
+        return view('admin.users.show', compact('user'));
     }
 
     public function updateUser(Request $request, User $user): RedirectResponse
@@ -109,7 +121,9 @@ class AdminController extends Controller
         $user->update([
             'name' => trim($validated['name']),
             'email' => Str::lower(trim($validated['email'])),
-            'email_verified_at' => $request->boolean('email_verified') ? ($user->email_verified_at ?? now()) : null,
+            'email_verified_at' => $request->boolean('email_verified')
+                ? ($user->email_verified_at ?? now())
+                : null,
             'is_suspended' => $suspended,
         ]);
 
@@ -117,7 +131,7 @@ class AdminController extends Controller
             $user->tokens()->delete();
         }
 
-        return back()->with('status', 'User updated.');
+        return back()->with('status', 'User account updated.');
     }
 
     public function deleteUser(Request $request, User $user): RedirectResponse
@@ -129,14 +143,52 @@ class AdminController extends Controller
         $user->tokens()->delete();
         $user->delete();
 
-        return back()->with('status', 'User deleted.');
+        return redirect()->route('admin.users')->with('status', 'User account deleted.');
+    }
+
+    public function subscriptions(Request $request): View
+    {
+        $search = trim((string) $request->query('search'));
+
+        $users = User::query()
+            ->where('is_admin', false)
+            ->with('subscription.plan')
+            ->when($search !== '', fn ($query) => $query->where(function ($query) use ($search): void {
+                $query->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            }))
+            ->latest('id')
+            ->limit(100)
+            ->get();
+
+        return view('admin.subscriptions.index', [
+            'users' => $users,
+            'search' => $search,
+            'plans' => SubscriptionPlan::query()->orderBy('sort_order')->orderBy('id')->get(),
+            'stats' => $this->stats(),
+        ]);
+    }
+
+    public function subscriptionUser(User $user): View
+    {
+        abort_if($user->is_admin, 404);
+
+        $user->load('subscription.plan');
+
+        return view('admin.subscriptions.manage', [
+            'user' => $user,
+            'plans' => SubscriptionPlan::query()
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get(),
+        ]);
     }
 
     public function storePlan(Request $request): RedirectResponse
     {
         $validated = $this->validatePlan($request);
         $validated['slug'] = Str::slug($validated['slug'] ?: $validated['name']);
-        $validated['is_active'] = $request->boolean('is_active');
 
         SubscriptionPlan::query()->create($validated);
 
@@ -146,12 +198,11 @@ class AdminController extends Controller
     public function updatePlan(Request $request, SubscriptionPlan $plan): RedirectResponse
     {
         $validated = $this->validatePlan($request, $plan);
-        $validated['slug'] = Str::slug($validated['slug'] ?: $validated['name']);
-        $validated['is_active'] = $request->boolean('is_active');
+        $validated['slug'] = Str::slug($validated['slug'] ?: $plan->slug);
 
         $plan->update($validated);
 
-        return back()->with('status', 'Subscription plan updated.');
+        return back()->with('status', 'Plan settings updated.');
     }
 
     public function saveSubscription(Request $request): RedirectResponse
@@ -187,22 +238,40 @@ class AdminController extends Controller
             $slugRule->ignore($plan->id);
         }
 
-        return $request->validate([
+        $validated = $request->validate([
             'name' => ['required', 'string', 'max:120'],
-            'slug' => [
-                'required',
-                'string',
-                'max:120',
-                $slugRule,
-            ],
+            'slug' => ['nullable', 'string', 'max:120', $slugRule],
             'description' => ['nullable', 'string', 'max:255'],
-            'price_cents' => ['required', 'integer', 'min:0'],
-            'currency' => ['required', 'string', 'size:3'],
-            'interval' => ['required', Rule::in(['month'])],
+            'price_dollars' => ['required', 'numeric', 'min:0', 'max:99999'],
             'trial_days' => ['required', 'integer', 'min:0', 'max:365'],
             'stripe_price_id' => ['nullable', 'string', 'max:255'],
-            'sort_order' => ['required', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
         ]);
+
+        return [
+            'name' => trim($validated['name']),
+            'slug' => $validated['slug'] ?? '',
+            'description' => trim((string) ($validated['description'] ?? '')),
+            'price_cents' => (int) round(((float) $validated['price_dollars']) * 100),
+            'currency' => 'USD',
+            'interval' => 'month',
+            'trial_days' => (int) $validated['trial_days'],
+            'stripe_price_id' => trim((string) ($validated['stripe_price_id'] ?? '')) ?: null,
+            'is_active' => $request->boolean('is_active'),
+            'sort_order' => $plan?->sort_order ?? 10,
+        ];
+    }
+
+    private function stats(): array
+    {
+        return [
+            'users' => User::query()->where('is_admin', false)->count(),
+            'verified' => User::query()
+                ->where('is_admin', false)
+                ->whereNotNull('email_verified_at')
+                ->count(),
+            'trialing' => UserSubscription::query()->where('status', 'trialing')->count(),
+            'active' => UserSubscription::query()->where('status', 'active')->count(),
+        ];
     }
 }
