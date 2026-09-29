@@ -21,18 +21,31 @@
 
     <div class="card">
         <div class="card-pad">
-            <div class="card-head"><div><div class="card-title">Match status</div><div class="card-copy">Update the operational state of this match.</div></div></div>
+            <div class="card-head"><div><div class="card-title">Match settings</div><div class="card-copy">Edit the core details and operational state of this match.</div></div></div>
             <form method="post" action="{{ route('admin.matches.update',$match) }}">
                 @csrf @method('patch')
-                <div class="field">
-                    <label>Status</label>
-                    <select class="select" name="status">
-                        @foreach(['open' => 'Open', 'confirmed' => 'Confirmed', 'cancelled' => 'Cancelled', 'completed' => 'Completed'] as $value => $label)
-                            <option value="{{ $value }}" @selected($match->status === $value)>{{ $label }}</option>
-                        @endforeach
-                    </select>
+                <div class="form-grid">
+                    <div class="span2 field"><label>Location / address</label><input class="input" name="location_address" value="{{ old('location_address',$match->location_address) }}" required></div>
+                    <div class="field"><label>Venue name</label><input class="input" name="venue_name" value="{{ old('venue_name',$match->venue_name) }}"></div>
+                    <div class="field"><label>Starts at</label><input class="input" type="datetime-local" name="starts_at" value="{{ old('starts_at',$match->starts_at->format('Y-m-d\\TH:i')) }}" required></div>
+                    <div class="field">
+                        <label>Status</label>
+                        <select class="select" name="status">
+                            @foreach(['open' => 'Open', 'confirmed' => 'Confirmed', 'cancelled' => 'Cancelled', 'completed' => 'Completed'] as $value => $label)
+                                <option value="{{ $value }}" @selected($match->status === $value)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="field switch-row">
+                        <div><b>Public match</b><span>Visible in public match discovery.</span></div>
+                        <input class="switch" type="checkbox" name="is_public" value="1" @checked($match->is_public)>
+                    </div>
+                    <div class="span2 switch-row">
+                        <div><b>Invite only</b><span>Only invited players should be able to join.</span></div>
+                        <input class="switch" type="checkbox" name="is_invite_only" value="1" @checked($match->is_invite_only)>
+                    </div>
+                    <div class="span2"><button class="btn" type="submit">Save match changes</button></div>
                 </div>
-                <button class="btn" style="margin-top:16px" type="submit">Save match status</button>
             </form>
         </div>
     </div>
