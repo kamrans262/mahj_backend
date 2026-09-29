@@ -80,6 +80,16 @@ class StripeBillingService
         return $session;
     }
 
+    public function retrieveCheckoutSession(string $sessionId): array
+    {
+        $this->ensureConfigured();
+
+        return $this->request()
+            ->get(self::API_BASE.'/checkout/sessions/'.urlencode($sessionId))
+            ->throw()
+            ->json();
+    }
+
     public function retrieveSubscription(string $subscriptionId): array
     {
         $this->ensureConfigured();
