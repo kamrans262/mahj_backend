@@ -4,7 +4,10 @@ use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\SubscriptionController;
+use App\Http\Controllers\Api\StripeWebhookController;
 use Illuminate\Support\Facades\Route;
+
+Route::post('/stripe/webhook', StripeWebhookController::class);
 
 Route::prefix('auth')->group(function (): void {
     Route::post('/register/request-otp', [AuthController::class, 'requestRegistrationOtp'])
