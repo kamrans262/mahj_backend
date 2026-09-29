@@ -5,6 +5,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/admin');
 
+Route::view('/billing/success', 'billing.success')->name('billing.success');
+Route::view('/billing/cancel', 'billing.cancel')->name('billing.cancel');
+
 Route::prefix('admin')->name('admin.')->group(function (): void {
     Route::get('/login', [AdminController::class, 'loginView'])->name('login');
     Route::post('/login', [AdminController::class, 'login'])->name('login.submit');
