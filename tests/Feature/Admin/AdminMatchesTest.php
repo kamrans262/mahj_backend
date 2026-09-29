@@ -42,6 +42,7 @@ class AdminMatchesTest extends TestCase
             ->patch('/admin/matches/'.$match->id, [
                 'location_address' => $match->location_address,
                 'venue_name' => 'Updated Court',
+                'notes' => 'Bring a ball.',
                 'starts_at' => $match->starts_at->format('Y-m-d H:i:s'),
                 'status' => 'cancelled',
                 'is_public' => '1',
@@ -51,6 +52,7 @@ class AdminMatchesTest extends TestCase
         $match->refresh();
         $this->assertSame('cancelled', $match->status);
         $this->assertSame('Updated Court', $match->venue_name);
+        $this->assertSame('Bring a ball.', $match->notes);
         $this->assertNotNull($match->cancelled_at);
     }
 }
