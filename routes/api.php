@@ -38,6 +38,7 @@ Route::middleware(['auth:sanctum', 'account.active'])->group(function (): void {
 
     Route::get('/subscription', [SubscriptionController::class, 'show']);
     Route::post('/subscription/start-trial', [SubscriptionController::class, 'startTrial']);
+    Route::post('/subscription/confirm-checkout', [SubscriptionController::class, 'confirmCheckout']);
     Route::put('/subscription/plan', [SubscriptionController::class, 'changePlan']);
     Route::post('/subscription/cancel', [SubscriptionController::class, 'cancel']);
 });
