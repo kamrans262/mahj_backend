@@ -12,7 +12,7 @@ Artisan::command('mahj:admin {email} {--name=Mahj Admin}', function (): int {
     if ($password === null || strlen($password) < 8) {
         $this->error('Password must contain at least 8 characters.');
 
-        return self::FAILURE;
+        return 1;
     }
 
     User::query()->updateOrCreate(
@@ -28,5 +28,5 @@ Artisan::command('mahj:admin {email} {--name=Mahj Admin}', function (): int {
 
     $this->info('Mahj admin account is ready.');
 
-    return self::SUCCESS;
+    return 0;
 })->purpose('Create or update a Mahj admin account');
