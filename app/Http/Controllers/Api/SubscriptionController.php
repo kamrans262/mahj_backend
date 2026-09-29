@@ -85,6 +85,46 @@ class SubscriptionController extends Controller
         ], 201);
     }
 
+    public function confirmCheckout(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'session_id' => ['required', 'string', 'max:255'],
+        ]);
+
+        $session = $this->stripe->retrieveCheckoutSession($validated['session_id']);
+
+        $sessionUserId = $session['client_reference_id']
+            ?? data_get($session, 'metadata.user_id');
+
+        if ((string) $sessionUserId !== (string) $request->user()->id) {
+            throw ValidationException::withMessages([
+                'subscription' => ['This Stripe checkout session does not belong to this account.'],
+            ]);
+        }
+
+        if (($session['status'] ?? null) !== 'complete') {
+            throw ValidationException::withMessages([
+                'subscription' => ['Stripe checkout is not complete yet.'],
+            ]);
+        }
+
+        $subscriptionId = $session['subscription'] ?? null;
+
+        if (! is_string($subscriptionId) || $subscriptionId === '') {
+            throw ValidationException::withMessages([
+                'subscription' => ['Stripe did not return a subscription for this checkout.'],
+            ]);
+        }
+
+        $remote = $this->stripe->retrieveSubscription($subscriptionId);
+        $this->stripe->syncRemoteSubscription($remote);
+
+        return response()->json([
+            'message' => 'Stripe subscription confirmed.',
+            ...$this->stateFor($request->user()->refresh()),
+        ]);
+    }
+
     public function changePlan(Request $request): JsonResponse
     {
         $validated = $request->validate([
