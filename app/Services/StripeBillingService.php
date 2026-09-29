@@ -25,8 +25,15 @@ class StripeBillingService
         $this->ensureConfigured();
 
         $existing = $user->subscription;
-        $lineItem = blank($plan->stripe_price_id)
+        $stripePriceId = trim((string) $plan->stripe_price_id);
+        $hasStripePriceId = str_starts_with($stripePriceId, 'price_');
+
+        $lineItem = $hasStripePriceId
             ? [
+                'price' => $stripePriceId,
+                'quantity' => 1,
+            ]
+            : [
                 'price_data' => [
                     'currency' => strtolower($plan->currency),
                     'unit_amount' => $plan->price_cents,
@@ -36,10 +43,6 @@ class StripeBillingService
                         'description' => $plan->description ?: 'Mahj membership',
                     ],
                 ],
-                'quantity' => 1,
-            ]
-            : [
-                'price' => $plan->stripe_price_id,
                 'quantity' => 1,
             ];
 
@@ -110,9 +113,9 @@ class StripeBillingService
             ]);
         }
 
-        if (blank($plan->stripe_price_id)) {
+        if (! str_starts_with(trim((string) $plan->stripe_price_id), 'price_')) {
             throw ValidationException::withMessages([
-                'subscription' => ['The selected plan is not connected to Stripe.'],
+                'subscription' => ['The selected plan is not connected to a valid Stripe Price ID.'],
             ]);
         }
 
