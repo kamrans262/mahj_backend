@@ -24,22 +24,31 @@ class StripeBillingService
     {
         $this->ensureConfigured();
 
-        if (blank($plan->stripe_price_id)) {
-            throw ValidationException::withMessages([
-                'subscription' => ['This plan is not connected to a Stripe Price ID yet.'],
-            ]);
-        }
-
         $existing = $user->subscription;
+        $lineItem = blank($plan->stripe_price_id)
+            ? [
+                'price_data' => [
+                    'currency' => strtolower($plan->currency),
+                    'unit_amount' => $plan->price_cents,
+                    'recurring' => ['interval' => $plan->interval],
+                    'product_data' => [
+                        'name' => $plan->name,
+                        'description' => $plan->description ?: 'Mahj membership',
+                    ],
+                ],
+                'quantity' => 1,
+            ]
+            : [
+                'price' => $plan->stripe_price_id,
+                'quantity' => 1,
+            ];
+
         $payload = [
             'mode' => 'subscription',
             'success_url' => rtrim(config('app.url'), '/').'/billing/success?session_id={CHECKOUT_SESSION_ID}',
             'cancel_url' => rtrim(config('app.url'), '/').'/billing/cancel',
             'client_reference_id' => (string) $user->id,
-            'line_items' => [[
-                'price' => $plan->stripe_price_id,
-                'quantity' => 1,
-            ]],
+            'line_items' => [$lineItem],
             'metadata' => [
                 'user_id' => (string) $user->id,
                 'plan_id' => (string) $plan->id,
@@ -187,7 +196,9 @@ class StripeBillingService
             'provider_customer_id' => $customerId,
             'provider_subscription_id' => $subscriptionId,
             'trial_ends_at' => $this->fromTimestamp($remote['trial_end'] ?? null),
-            'current_period_ends_at' => $this->fromTimestamp($remote['current_period_end'] ?? null),
+            'current_period_ends_at' => $this->fromTimestamp(
+                $remote['current_period_end'] ?? data_get($remote, 'items.data.0.current_period_end'),
+            ),
             'cancel_at_period_end' => (bool) ($remote['cancel_at_period_end'] ?? false),
         ];
 
