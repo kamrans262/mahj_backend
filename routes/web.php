@@ -13,12 +13,17 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
         Route::post('/logout', [AdminController::class, 'logout'])->name('logout');
 
+        Route::get('/users', [AdminController::class, 'users'])->name('users');
+        Route::get('/users/{user}', [AdminController::class, 'user'])->name('users.show');
         Route::patch('/users/{user}', [AdminController::class, 'updateUser'])->name('users.update');
         Route::delete('/users/{user}', [AdminController::class, 'deleteUser'])->name('users.delete');
 
+        Route::get('/subscriptions', [AdminController::class, 'subscriptions'])->name('subscriptions');
+        Route::get('/subscriptions/users/{user}', [AdminController::class, 'subscriptionUser'])
+            ->name('subscriptions.user');
+        Route::post('/subscriptions', [AdminController::class, 'saveSubscription'])->name('subscriptions.save');
+
         Route::post('/plans', [AdminController::class, 'storePlan'])->name('plans.store');
         Route::patch('/plans/{plan}', [AdminController::class, 'updatePlan'])->name('plans.update');
-
-        Route::post('/subscriptions', [AdminController::class, 'saveSubscription'])->name('subscriptions.save');
     });
 });
