@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Models\UserSubscription;
+use App\Services\StripeBillingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,6 +14,10 @@ use Illuminate\Validation\ValidationException;
 
 class SubscriptionController extends Controller
 {
+    public function __construct(private readonly StripeBillingService $stripe)
+    {
+    }
+
     public function show(Request $request): JsonResponse
     {
         return response()->json($this->stateFor($request->user()));
@@ -29,18 +34,29 @@ class SubscriptionController extends Controller
             ->where('is_active', true)
             ->firstOrFail();
 
+        $existing = UserSubscription::query()
+            ->where('user_id', $request->user()->id)
+            ->first();
+
+        if ($existing !== null && in_array($existing->status, ['trialing', 'active'], true)) {
+            throw ValidationException::withMessages([
+                'subscription' => ['You already have an active subscription.'],
+            ]);
+        }
+
+        if ($this->stripe->isConfigured()) {
+            $session = $this->stripe->createCheckoutSession($request->user(), $plan);
+
+            return response()->json([
+                'message' => 'Stripe checkout is ready.',
+                'requires_checkout' => true,
+                'checkout_url' => $session['url'],
+                'checkout_session_id' => $session['id'],
+                ...$this->stateFor($request->user()),
+            ], 201);
+        }
+
         $subscription = DB::transaction(function () use ($request, $plan): UserSubscription {
-            $existing = UserSubscription::query()
-                ->where('user_id', $request->user()->id)
-                ->lockForUpdate()
-                ->first();
-
-            if ($existing !== null && in_array($existing->status, ['trialing', 'active'], true)) {
-                throw ValidationException::withMessages([
-                    'subscription' => ['You already have an active subscription.'],
-                ]);
-            }
-
             $trialEndsAt = $plan->trial_days > 0
                 ? now()->addDays($plan->trial_days)
                 : null;
@@ -64,6 +80,7 @@ class SubscriptionController extends Controller
             'message' => $subscription->status === 'trialing'
                 ? 'Free trial started.'
                 : 'Subscription activated.',
+            'requires_checkout' => false,
             ...$this->stateFor($request->user()->refresh()),
         ], 201);
     }
@@ -79,9 +96,21 @@ class SubscriptionController extends Controller
             ->where('is_active', true)
             ->firstOrFail();
 
-        $subscription = UserSubscription::query()->firstOrNew([
-            'user_id' => $request->user()->id,
-        ]);
+        $subscription = UserSubscription::query()
+            ->where('user_id', $request->user()->id)
+            ->first();
+
+        if ($subscription?->provider === 'stripe') {
+            $remote = $this->stripe->changeSubscriptionPlan($subscription, $plan);
+            $this->stripe->syncRemoteSubscription($remote);
+
+            return response()->json([
+                'message' => 'Subscription plan updated.',
+                ...$this->stateFor($request->user()->refresh()),
+            ]);
+        }
+
+        $subscription ??= new UserSubscription(['user_id' => $request->user()->id]);
 
         $subscription->fill([
             'subscription_plan_id' => $plan->id,
@@ -109,6 +138,16 @@ class SubscriptionController extends Controller
         if ($subscription === null) {
             throw ValidationException::withMessages([
                 'subscription' => ['No active subscription was found.'],
+            ]);
+        }
+
+        if ($subscription->provider === 'stripe') {
+            $remote = $this->stripe->cancelAtPeriodEnd($subscription);
+            $this->stripe->syncRemoteSubscription($remote);
+
+            return response()->json([
+                'message' => 'Your subscription will cancel at the end of the current period.',
+                ...$this->stateFor($request->user()->refresh()),
             ]);
         }
 
@@ -167,10 +206,12 @@ class SubscriptionController extends Controller
             'subscription' => $subscription ? [
                 'id' => $subscription->id,
                 'status' => $subscription->status,
+                'provider' => $subscription->provider,
                 'trial_ends_at' => $subscription->trial_ends_at?->toISOString(),
                 'current_period_ends_at' => $subscription->current_period_ends_at?->toISOString(),
                 'cancel_at_period_end' => $subscription->cancel_at_period_end,
             ] : null,
+            'billing_provider' => $this->stripe->isConfigured() ? 'stripe' : 'manual',
         ];
     }
 
