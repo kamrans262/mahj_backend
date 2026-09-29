@@ -32,6 +32,34 @@ class SubscriptionTest extends TestCase
             ->assertJsonPath('current_plan.id', (string) $plan->id);
     }
 
+    public function test_invalid_stored_stripe_price_value_falls_back_to_inline_price_data(): void
+    {
+        config()->set('services.stripe.secret', 'sk_test_fake');
+
+        Http::fake([
+            'api.stripe.com/v1/checkout/sessions' => Http::response([
+                'id' => 'cs_test_456',
+                'url' => 'https://checkout.stripe.com/c/pay/cs_test_456',
+            ]),
+        ]);
+
+        $user = User::factory()->create();
+        $plan = $this->createPlan();
+        $plan->update(['stripe_price_id' => '99']);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/subscription/start-trial', ['plan_id' => $plan->id])
+            ->assertCreated()
+            ->assertJsonPath('requires_checkout', true);
+
+        Http::assertSent(function ($request) use ($plan): bool {
+            parse_str($request->body(), $body);
+
+            return data_get($body, 'line_items.0.price') === null
+                && data_get($body, 'line_items.0.price_data.unit_amount') === (string) $plan->price_cents;
+        });
+    }
+
     public function test_configured_stripe_returns_checkout_url_instead_of_creating_manual_subscription(): void
     {
         config()->set('services.stripe.secret', 'sk_test_fake');
