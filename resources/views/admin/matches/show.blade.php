@@ -36,6 +36,7 @@
                             @endforeach
                         </select>
                     </div>
+                    <div class="span2 field"><label>Notes for players</label><textarea class="input" name="notes" style="min-height:90px;padding-top:12px">{{ old('notes',$match->notes) }}</textarea></div>
                     <div class="field switch-row">
                         <div><b>Public match</b><span>Visible in public match discovery.</span></div>
                         <input class="switch" type="checkbox" name="is_public" value="1" @checked($match->is_public)>
