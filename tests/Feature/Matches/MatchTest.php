@@ -3,6 +3,7 @@
 namespace Tests\Feature\Matches;
 
 use App\Models\MahjMatch;
+use App\Models\Sport;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -14,10 +15,11 @@ class MatchTest extends TestCase
     public function test_host_can_create_four_player_match(): void
     {
         $host = User::factory()->create();
+        $sport = $this->createSport();
 
         $response = $this->actingAs($host, 'sanctum')
             ->postJson('/api/matches', [
-                'name' => 'Basketball',
+                'sport_id' => $sport->id,
                 'location_address' => 'Central Park, New York',
                 'venue_name' => 'Central Park View',
                 'starts_at' => now()->addDay()->toISOString(),
@@ -27,6 +29,8 @@ class MatchTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('match.name', 'Basketball')
             ->assertJsonPath('match.sport_name', 'Basketball')
+            ->assertJsonPath('match.sport.slug', 'basketball')
+            ->assertJsonPath('match.sport_icon_key', 'basketball')
             ->assertJsonPath('match.status', 'open')
             ->assertJsonPath('match.current_players', 1)
             ->assertJsonPath('match.max_players', 4)
@@ -39,6 +43,7 @@ class MatchTest extends TestCase
             'id' => $matchId,
             'host_user_id' => $host->id,
             'name' => 'Basketball',
+            'sport_id' => $sport->id,
             'max_players' => 4,
             'status' => 'open',
         ]);
@@ -46,6 +51,51 @@ class MatchTest extends TestCase
             'match_id' => $matchId,
             'user_id' => $host->id,
         ]);
+    }
+
+    public function test_other_sport_can_be_created_with_custom_name(): void
+    {
+        $host = User::factory()->create();
+
+        $this->actingAs($host, 'sanctum')
+            ->postJson('/api/matches', [
+                'custom_sport_name' => 'Ultimate Frisbee',
+                'location_address' => 'Central Park, New York',
+                'starts_at' => now()->addDay()->toISOString(),
+                'is_public' => true,
+                'is_invite_only' => false,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('match.sport_name', 'Ultimate Frisbee')
+            ->assertJsonPath('match.sport', null)
+            ->assertJsonPath('match.sport_icon_key', 'generic');
+
+        $this->assertDatabaseHas('matches', [
+            'custom_sport_name' => 'Ultimate Frisbee',
+            'name' => 'Ultimate Frisbee',
+            'sport_id' => null,
+        ]);
+    }
+
+    public function test_sports_catalog_lists_only_active_sports_in_order(): void
+    {
+        $active = $this->createSport();
+        Sport::query()->create([
+            'name' => 'Hidden Sport',
+            'slug' => 'hidden-sport',
+            'icon_key' => 'generic',
+            'is_active' => false,
+            'sort_order' => 1,
+        ]);
+
+        $user = User::factory()->create();
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/sports')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $active->id)
+            ->assertJsonPath('data.0.slug', 'basketball');
     }
 
     public function test_public_active_matches_are_available_for_discovery(): void
@@ -141,6 +191,17 @@ class MatchTest extends TestCase
         $this->actingAs($other, 'sanctum')
             ->postJson("/api/matches/{$match->id}/join")
             ->assertUnprocessable();
+    }
+
+    private function createSport(): Sport
+    {
+        return Sport::query()->create([
+            'name' => 'Basketball',
+            'slug' => 'basketball',
+            'icon_key' => 'basketball',
+            'is_active' => true,
+            'sort_order' => 20,
+        ]);
     }
 
     private function createMatch(User $host, bool $inviteOnly = false): MahjMatch
