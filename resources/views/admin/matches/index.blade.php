@@ -28,7 +28,7 @@
             <tbody>
             @forelse($matches as $match)
                 <tr>
-                    <td><b>{{ $match->name }}</b><div style="color:#667085;font-size:10px;margin-top:3px">{{ $match->venue_name ?: $match->location_address }}</div></td>
+                    <td><b>{{ $match->sport?->name ?? $match->custom_sport_name ?? $match->name }}</b><div style="color:#667085;font-size:10px;margin-top:3px">{{ $match->venue_name ?: $match->location_address }}</div></td>
                     <td><b>{{ $match->host->name }}</b><div style="color:#667085;font-size:10px;margin-top:3px">{{ $match->host->email }}</div></td>
                     <td>{{ $match->players_count }}/{{ $match->max_players }}</td>
                     <td><span class="badge {{ $match->status === 'open' ? 'success' : ($match->status === 'cancelled' ? 'danger' : 'orange') }}">{{ ucfirst($match->status) }}</span></td>
