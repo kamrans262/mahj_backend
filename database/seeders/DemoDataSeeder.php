@@ -15,6 +15,7 @@ class DemoDataSeeder extends Seeder
     public function run(): void
     {
         $this->call([
+            SportsCatalogSeeder::class,
             MatchesDemoSeeder::class,
         ]);
     }
