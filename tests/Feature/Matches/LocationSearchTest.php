@@ -13,7 +13,7 @@ class LocationSearchTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_authenticated_user_can_search_structured_us_locations(): void
+    public function test_authenticated_user_can_search_structured_global_locations(): void
     {
         Cache::flush();
 
@@ -27,27 +27,27 @@ class LocationSearchTest extends TestCase
                 'status' => 'OK',
                 'results' => [
                     [
-                        'formatted_address' => 'Central Park, New York, NY 10024, USA',
+                        'formatted_address' => 'Multan, Punjab, Pakistan',
                         'geometry' => [
                             'location' => [
-                                'lat' => 40.785091,
-                                'lng' => -73.968285,
+                                'lat' => 30.1575,
+                                'lng' => 71.5249,
                             ],
                         ],
                         'address_components' => [
                             [
-                                'long_name' => 'New York',
-                                'short_name' => 'New York',
+                                'long_name' => 'Multan',
+                                'short_name' => 'Multan',
                                 'types' => ['locality', 'political'],
                             ],
                             [
-                                'long_name' => 'New York',
-                                'short_name' => 'NY',
+                                'long_name' => 'Punjab',
+                                'short_name' => 'Punjab',
                                 'types' => ['administrative_area_level_1', 'political'],
                             ],
                             [
-                                'long_name' => '10024',
-                                'short_name' => '10024',
+                                'long_name' => '60000',
+                                'short_name' => '60000',
                                 'types' => ['postal_code'],
                             ],
                         ],
@@ -59,20 +59,24 @@ class LocationSearchTest extends TestCase
         $user = User::factory()->create();
 
         $this->actingAs($user, 'sanctum')
-            ->getJson('/api/locations/search?q=Central%20Park')
+            ->getJson('/api/locations/search?q=Multan')
             ->assertOk()
-            ->assertJsonPath('data.0.label', 'Central Park, New York, NY 10024, USA')
-            ->assertJsonPath('data.0.latitude', 40.785091)
-            ->assertJsonPath('data.0.longitude', -73.968285)
-            ->assertJsonPath('data.0.city', 'New York')
-            ->assertJsonPath('data.0.state', 'New York')
-            ->assertJsonPath('data.0.zip_code', '10024');
+            ->assertJsonPath('data.0.label', 'Multan, Punjab, Pakistan')
+            ->assertJsonPath('data.0.latitude', 30.1575)
+            ->assertJsonPath('data.0.longitude', 71.5249)
+            ->assertJsonPath('data.0.city', 'Multan')
+            ->assertJsonPath('data.0.state', 'Punjab')
+            ->assertJsonPath('data.0.zip_code', '60000');
 
         Http::assertSent(function (Request $request): bool {
+            parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+
             return str_starts_with(
                 $request->url(),
                 'https://maps.googleapis.com/maps/api/geocode/json?'
-            );
+            )
+                && ($query['address'] ?? null) === 'Multan'
+                && ! array_key_exists('components', $query);
         });
     }
 }
