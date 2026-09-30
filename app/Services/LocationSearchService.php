@@ -18,33 +18,47 @@ class LocationSearchService
             return [];
         }
 
-        $limit = max(1, min($limit, 8));
-        $cacheKey = 'mahj:location-search:'.sha1(mb_strtolower($query)."|".$limit);
+        $apiKey = trim((string) config('services.google_maps.server_key'));
+        if ($apiKey === '') {
+            return [];
+        }
 
-        return Cache::remember($cacheKey, now()->addDays(30), function () use ($query, $limit): array {
+        $limit = max(1, min($limit, 8));
+        $cacheKey = 'mahj:google-location-search:'.sha1(mb_strtolower($query)."|".$limit);
+
+        return Cache::remember($cacheKey, now()->addDays(30), function () use ($query, $limit, $apiKey): array {
             try {
-                $baseUrl = rtrim((string) config('services.nominatim.base_url'), '/');
+                $url = (string) config(
+                    'services.google_maps.geocoding_url',
+                    'https://maps.googleapis.com/maps/api/geocode/json'
+                );
+
                 $response = Http::acceptJson()
-                    ->withHeaders([
-                        'User-Agent' => (string) config('services.nominatim.user_agent'),
-                        'Accept-Language' => 'en-US,en;q=0.9',
-                    ])
                     ->timeout(6)
-                    ->get($baseUrl.'/search', [
-                        'q' => $query,
-                        'format' => 'jsonv2',
-                        'addressdetails' => 1,
-                        'limit' => $limit,
-                        'countrycodes' => 'us',
+                    ->get($url, [
+                        'address' => $query,
+                        'components' => 'country:US',
+                        'key' => $apiKey,
                     ]);
 
-                if (! $response->successful() || ! is_array($response->json())) {
+                if (! $response->successful()) {
                     return [];
                 }
 
-                return collect($response->json())
+                $payload = $response->json();
+                if (! is_array($payload) || ($payload['status'] ?? null) !== 'OK') {
+                    return [];
+                }
+
+                $results = $payload['results'] ?? null;
+                if (! is_array($results)) {
+                    return [];
+                }
+
+                return collect($results)
                     ->map(fn (mixed $item): ?array => $this->normalizeResult($item))
                     ->filter()
+                    ->take($limit)
                     ->values()
                     ->all();
             } catch (Throwable) {
@@ -66,26 +80,51 @@ class LocationSearchService
      */
     private function normalizeResult(mixed $item): ?array
     {
-        if (! is_array($item) || ! is_numeric($item['lat'] ?? null) || ! is_numeric($item['lon'] ?? null)) {
+        if (! is_array($item)) {
             return null;
         }
 
-        $address = is_array($item['address'] ?? null) ? $item['address'] : [];
-        $city = $address['city']
-            ?? $address['town']
-            ?? $address['village']
-            ?? $address['municipality']
-            ?? '';
-        $state = $address['state'] ?? '';
-        $zipCode = $address['postcode'] ?? '';
+        $location = $item['geometry']['location'] ?? null;
+        if (
+            ! is_array($location)
+            || ! is_numeric($location['lat'] ?? null)
+            || ! is_numeric($location['lng'] ?? null)
+        ) {
+            return null;
+        }
+
+        $components = is_array($item['address_components'] ?? null)
+            ? $item['address_components']
+            : [];
 
         return [
-            'label' => trim((string) ($item['display_name'] ?? $item['name'] ?? '')),
-            'latitude' => (float) $item['lat'],
-            'longitude' => (float) $item['lon'],
-            'city' => (string) $city,
-            'state' => (string) $state,
-            'zip_code' => (string) $zipCode,
+            'label' => trim((string) ($item['formatted_address'] ?? '')),
+            'latitude' => (float) $location['lat'],
+            'longitude' => (float) $location['lng'],
+            'city' => $this->component($components, ['locality', 'postal_town']),
+            'state' => $this->component($components, ['administrative_area_level_1']),
+            'zip_code' => $this->component($components, ['postal_code']),
         ];
+    }
+
+    /**
+     * @param array<int, mixed> $components
+     * @param array<int, string> $wantedTypes
+     */
+    private function component(array $components, array $wantedTypes): string
+    {
+        foreach ($components as $component) {
+            if (! is_array($component) || ! is_array($component['types'] ?? null)) {
+                continue;
+            }
+
+            foreach ($wantedTypes as $type) {
+                if (in_array($type, $component['types'], true)) {
+                    return (string) ($component['long_name'] ?? $component['short_name'] ?? '');
+                }
+            }
+        }
+
+        return '';
     }
 }

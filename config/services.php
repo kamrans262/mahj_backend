@@ -34,11 +34,11 @@ return [
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
     ],
 
-    'nominatim' => [
-        'base_url' => env('NOMINATIM_BASE_URL', 'https://nominatim.openstreetmap.org'),
-        'user_agent' => env(
-            'NOMINATIM_USER_AGENT',
-            'Mahj/1.0 (palegreen-crane-342913.hostingersite.com)'
+    'google_maps' => [
+        'server_key' => env('GOOGLE_MAPS_SERVER_KEY'),
+        'geocoding_url' => env(
+            'GOOGLE_MAPS_GEOCODING_URL',
+            'https://maps.googleapis.com/maps/api/geocode/json'
         ),
     ],
 
