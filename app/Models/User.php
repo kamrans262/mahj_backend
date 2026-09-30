@@ -72,4 +72,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(MatchInvitation::class, 'invitee_user_id');
     }
+
+    public function matchChatMessages(): HasMany
+    {
+        return $this->hasMany(MatchChatMessage::class, 'sender_user_id');
+    }
 }
