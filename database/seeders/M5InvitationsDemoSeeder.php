@@ -12,17 +12,19 @@ use Illuminate\Support\Str;
 
 class M5InvitationsDemoSeeder extends Seeder
 {
-    private const TARGET_EMAIL = 'kobiral702@abowned.com';
+    private const TARGET_EMAIL_PREFIX = 'map.view';
 
     public function run(): void
     {
         $target = User::query()
-            ->where('email', self::TARGET_EMAIL)
+            ->where('email', 'like', self::TARGET_EMAIL_PREFIX.'%')
+            ->orderBy('id')
             ->first();
 
         if ($target === null) {
             $this->command?->warn(
-                'M5 demo data skipped: '.self::TARGET_EMAIL.' does not exist.',
+                'M5 demo data skipped: no existing account starts with '.
+                self::TARGET_EMAIL_PREFIX.'.',
             );
 
             return;
@@ -58,7 +60,7 @@ class M5InvitationsDemoSeeder extends Seeder
         $this->seedDeclinedHistory($target, $helpers, $sports);
 
         $this->command?->info(
-            'M5 demo data ready for '.self::TARGET_EMAIL.'.',
+            'M5 demo data ready for '.$target->email.'.',
         );
     }
 
