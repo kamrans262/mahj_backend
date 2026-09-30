@@ -9,8 +9,8 @@ return [
     |
     | This file is for storing the credentials for third party services such
     | as Resend, Postmark, AWS, and more. This file provides the de facto
-    | location for this type of information, allowing packages to have
-    | a conventional file to locate the various service credentials.
+    | location for this type of information, allowing packages to have a
+    | conventional location for this type of information.
     |
     */
 
@@ -32,6 +32,14 @@ return [
         'key' => env('STRIPE_KEY'),
         'secret' => env('STRIPE_SECRET_KEY', env('STRIPE_SECRET')),
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+    ],
+
+    'google_maps' => [
+        'server_key' => env('GOOGLE_MAPS_SERVER_KEY'),
+        'geocoding_url' => env(
+            'GOOGLE_MAPS_GEOCODING_URL',
+            'https://maps.googleapis.com/maps/api/geocode/json'
+        ),
     ],
 
     'slack' => [

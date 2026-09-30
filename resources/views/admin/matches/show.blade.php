@@ -15,6 +15,7 @@
                 <div class="meta-row"><span>Starts</span><b>{{ $match->starts_at->format('M j, Y · g:i A') }}</b></div>
                 <div class="meta-row"><span>Players</span><b>{{ $match->players_count }}/{{ $match->max_players }}</b></div>
                 <div class="meta-row"><span>Visibility</span><b>{{ $match->is_invite_only ? 'Invite only' : ($match->is_public ? 'Public' : 'Private') }}</b></div>
+                <div class="meta-row"><span>Coordinates</span><b>{{ $match->latitude !== null && $match->longitude !== null ? $match->latitude.', '.$match->longitude : 'Not set' }}</b></div>
                 <div class="meta-row"><span>Featured</span><b>{{ $match->is_featured ? 'Yes · order '.$match->featured_order : 'No' }}</b></div>
             </div>
         </div>
@@ -22,7 +23,7 @@
 
     <div class="card">
         <div class="card-pad">
-            <div class="card-head"><div><div class="card-title">Match settings</div><div class="card-copy">Edit the core details and operational state of this match.</div></div></div>
+            <div class="card-head"><div><div class="card-title">Match settings</div><div class="card-copy">Edit the core details, map coordinates and operational state of this match.</div></div></div>
             <form method="post" action="{{ route('admin.matches.update',$match) }}">
                 @csrf @method('patch')
                 <div class="form-grid">
@@ -44,6 +45,16 @@
                     <div class="span2 field"><label>Location / address</label><input class="input" name="location_address" value="{{ old('location_address',$match->location_address) }}" required></div>
                     <div class="field"><label>Venue name</label><input class="input" name="venue_name" value="{{ old('venue_name',$match->venue_name) }}"></div>
                     <div class="field"><label>Starts at</label><input class="input" type="datetime-local" name="starts_at" value="{{ old('starts_at',$match->starts_at->format('Y-m-d\\TH:i')) }}" required></div>
+                    <div class="field">
+                        <label>Latitude</label>
+                        <input class="input" type="number" step="0.0000001" min="-90" max="90" name="latitude" value="{{ old('latitude',$match->latitude) }}" placeholder="40.7850910">
+                        <small>Used for nearby filtering and map placement.</small>
+                    </div>
+                    <div class="field">
+                        <label>Longitude</label>
+                        <input class="input" type="number" step="0.0000001" min="-180" max="180" name="longitude" value="{{ old('longitude',$match->longitude) }}" placeholder="-73.9682850">
+                        <small>Latitude and longitude must be provided together.</small>
+                    </div>
                     <div class="field">
                         <label>Status</label>
                         <select class="select" name="status">

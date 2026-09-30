@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\MatchController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\SportController;
@@ -45,6 +46,8 @@ Route::middleware(['auth:sanctum', 'account.active'])->group(function (): void {
     Route::post('/subscription/cancel', [SubscriptionController::class, 'cancel']);
 
     Route::get('/sports', [SportController::class, 'index']);
+    Route::get('/locations/search', [LocationController::class, 'search'])
+        ->middleware('throttle:10,1');
 
     Route::get('/matches', [MatchController::class, 'index']);
     Route::post('/matches', [MatchController::class, 'store']);
