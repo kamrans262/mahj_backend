@@ -9,7 +9,7 @@
 <div class="grid2">
     <div class="card">
         <div class="card-pad">
-            <div class="card-head"><div><div class="card-title">{{ $match->venue_name ?: 'Mahj Match' }}</div><div class="card-copy">{{ $match->location_address }}</div></div><span class="badge {{ $match->status === 'open' ? 'success' : ($match->status === 'cancelled' ? 'danger' : 'orange') }}">{{ ucfirst($match->status) }}</span></div>
+            <div class="card-head"><div><div class="card-title">{{ $match->name }}</div><div class="card-copy">{{ $match->venue_name ?: $match->location_address }}</div></div><span class="badge {{ $match->status === 'open' ? 'success' : ($match->status === 'cancelled' ? 'danger' : 'orange') }}">{{ ucfirst($match->status) }}</span></div>
             <div class="meta">
                 <div class="meta-row"><span>Host</span><b>{{ $match->host->name }} · {{ $match->host->email }}</b></div>
                 <div class="meta-row"><span>Starts</span><b>{{ $match->starts_at->format('M j, Y · g:i A') }}</b></div>
@@ -25,6 +25,7 @@
             <form method="post" action="{{ route('admin.matches.update',$match) }}">
                 @csrf @method('patch')
                 <div class="form-grid">
+                    <div class="span2 field"><label>Sport / match name</label><input class="input" name="name" value="{{ old('name',$match->name) }}" required></div>
                     <div class="span2 field"><label>Location / address</label><input class="input" name="location_address" value="{{ old('location_address',$match->location_address) }}" required></div>
                     <div class="field"><label>Venue name</label><input class="input" name="venue_name" value="{{ old('venue_name',$match->venue_name) }}"></div>
                     <div class="field"><label>Starts at</label><input class="input" type="datetime-local" name="starts_at" value="{{ old('starts_at',$match->starts_at->format('Y-m-d\\TH:i')) }}" required></div>
