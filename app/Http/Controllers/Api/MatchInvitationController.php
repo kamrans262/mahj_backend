@@ -100,7 +100,7 @@ class MatchInvitationController extends Controller
         $excludedPlayerIds = $match->players()->pluck('users.id');
         $excludedInvitationIds = MatchInvitation::query()
             ->where('match_id', $match->id)
-            ->whereIn('status', ['pending', 'accepted'])
+            ->where('status', 'pending')
             ->pluck('invitee_user_id');
 
         $like = '%'.$search.'%';
