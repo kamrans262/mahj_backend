@@ -21,11 +21,14 @@ class MatchResource extends JsonResource
         $isHost = $user !== null && $this->host_user_id === $user->id;
         $isJoined = $user !== null && $playerIds->contains($user->id);
         $isFull = $currentPlayers >= $this->max_players;
+        $sportName = $this->sport?->name
+            ?? $this->custom_sport_name
+            ?? $this->name;
 
         return [
             'id' => (string) $this->id,
-            'name' => $this->name,
-            'sport_name' => $this->name,
+            'name' => $sportName,
+            'sport_name' => $sportName,
             'sport' => $this->sport === null ? null : [
                 'id' => (string) $this->sport->id,
                 'name' => $this->sport->name,
