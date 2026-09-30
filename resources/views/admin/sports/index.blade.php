@@ -60,20 +60,22 @@
             <tbody>
             @forelse($sports as $sport)
                 <tr>
-                    <form method="post" action="{{ route('admin.sports.update', $sport) }}">
-                        @csrf @method('patch')
-                        <td><input class="input" name="name" value="{{ $sport->name }}" required></td>
-                        <td>
-                            <select class="select" name="icon_key" required>
-                                @foreach($iconKeys as $iconKey)
-                                    <option value="{{ $iconKey }}" @selected($sport->icon_key === $iconKey)>{{ ucfirst($iconKey) }}</option>
-                                @endforeach
-                            </select>
-                        </td>
-                        <td><input class="input" style="width:90px" type="number" min="0" name="sort_order" value="{{ $sport->sort_order }}" required></td>
-                        <td><input class="switch" type="checkbox" name="is_active" value="1" @checked($sport->is_active)></td>
-                        <td><button class="btn btn-secondary" type="submit">Save</button></td>
-                    </form>
+                    <td>
+                        <form id="sport-form-{{ $sport->id }}" method="post" action="{{ route('admin.sports.update', $sport) }}">
+                            @csrf @method('patch')
+                        </form>
+                        <input class="input" form="sport-form-{{ $sport->id }}" name="name" value="{{ $sport->name }}" required>
+                    </td>
+                    <td>
+                        <select class="select" form="sport-form-{{ $sport->id }}" name="icon_key" required>
+                            @foreach($iconKeys as $iconKey)
+                                <option value="{{ $iconKey }}" @selected($sport->icon_key === $iconKey)>{{ ucfirst($iconKey) }}</option>
+                            @endforeach
+                        </select>
+                    </td>
+                    <td><input class="input" form="sport-form-{{ $sport->id }}" style="width:90px" type="number" min="0" name="sort_order" value="{{ $sport->sort_order }}" required></td>
+                    <td><input class="switch" form="sport-form-{{ $sport->id }}" type="checkbox" name="is_active" value="1" @checked($sport->is_active)></td>
+                    <td><button class="btn btn-secondary" form="sport-form-{{ $sport->id }}" type="submit">Save</button></td>
                 </tr>
             @empty
                 <tr><td colspan="5" class="empty">No sports configured yet.</td></tr>
