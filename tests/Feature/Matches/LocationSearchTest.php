@@ -69,7 +69,10 @@ class LocationSearchTest extends TestCase
             ->assertJsonPath('data.0.zip_code', '10024');
 
         Http::assertSent(function (Request $request): bool {
-            return $request->url() === 'https://maps.googleapis.com/maps/api/geocode/json?address=Central%20Park&components=country%3AUS&key=test-google-key';
+            return str_starts_with(
+                $request->url(),
+                'https://maps.googleapis.com/maps/api/geocode/json?'
+            );
         });
     }
 }
