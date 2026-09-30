@@ -3,6 +3,7 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\MahjMatch;
+use App\Models\Sport;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -15,9 +16,17 @@ class AdminMatchesTest extends TestCase
     {
         $admin = User::factory()->create(['is_admin' => true]);
         $host = User::factory()->create();
+        $sport = Sport::query()->create([
+            'name' => 'Basketball',
+            'slug' => 'basketball',
+            'icon_key' => 'basketball',
+            'is_active' => true,
+            'sort_order' => 20,
+        ]);
         $match = MahjMatch::query()->create([
             'host_user_id' => $host->id,
             'name' => 'Basketball',
+            'sport_id' => $sport->id,
             'location_address' => 'Central Park, New York',
             'venue_name' => 'Central Park View',
             'starts_at' => now()->addDay(),
@@ -42,7 +51,7 @@ class AdminMatchesTest extends TestCase
 
         $this->actingAs($admin)
             ->patch('/admin/matches/'.$match->id, [
-                'name' => 'Evening Basketball',
+                'sport_id' => $sport->id,
                 'location_address' => $match->location_address,
                 'venue_name' => 'Updated Court',
                 'notes' => 'Bring a ball.',
@@ -54,7 +63,8 @@ class AdminMatchesTest extends TestCase
 
         $match->refresh();
         $this->assertSame('cancelled', $match->status);
-        $this->assertSame('Evening Basketball', $match->name);
+        $this->assertSame('Basketball', $match->name);
+        $this->assertSame($sport->id, $match->sport_id);
         $this->assertSame('Updated Court', $match->venue_name);
         $this->assertSame('Bring a ball.', $match->notes);
         $this->assertNotNull($match->cancelled_at);
