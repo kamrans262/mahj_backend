@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class MahjMatch extends Model
 {
@@ -63,5 +64,10 @@ class MahjMatch extends Model
         return $this->belongsToMany(User::class, 'match_players', 'match_id', 'user_id')
             ->withPivot('joined_at')
             ->withTimestamps();
+    }
+
+    public function invitations(): HasMany
+    {
+        return $this->hasMany(MatchInvitation::class, 'match_id');
     }
 }

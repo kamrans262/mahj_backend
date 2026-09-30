@@ -104,6 +104,41 @@
     </div>
 </div>
 
+<div class="card" style="margin-top:18px">
+    <div class="card-pad">
+        <div class="card-head">
+            <div>
+                <div class="card-title">Invitations</div>
+                <div class="card-copy">Players invited to this match and their response status.</div>
+            </div>
+            <a class="btn btn-soft" href="{{ route('admin.invitations', ['search' => $match->venue_name ?: $match->location_address]) }}">View all invitations</a>
+        </div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead><tr><th>Invitee</th><th>Inviter</th><th>Status</th><th>Sent</th><th>Responded</th></tr></thead>
+                <tbody>
+                @forelse($match->invitations->sortByDesc('id') as $invitation)
+                    @php
+                        $statusClass = $invitation->status === 'accepted'
+                            ? 'success'
+                            : ($invitation->status === 'declined' ? 'danger' : 'warning');
+                    @endphp
+                    <tr>
+                        <td><b>{{ $invitation->invitee?->name ?? 'Unknown user' }}</b><div style="color:#667085;font-size:10px;margin-top:3px">{{ $invitation->invitee?->email }}</div></td>
+                        <td><b>{{ $invitation->inviter?->name ?? 'Unknown user' }}</b><div style="color:#667085;font-size:10px;margin-top:3px">{{ $invitation->inviter?->email }}</div></td>
+                        <td><span class="badge {{ $statusClass }}">{{ ucfirst($invitation->status) }}</span></td>
+                        <td>{{ $invitation->created_at?->format('M j, Y · g:i A') }}</td>
+                        <td>{{ $invitation->responded_at?->format('M j, Y · g:i A') ?? '—' }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="5" class="empty">No invitations have been sent for this match.</td></tr>
+                @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 <div class="card" style="margin-top:18px;border-color:#FECDCA">
     <div class="card-pad">
         <div class="card-title" style="color:#B42318">Delete match</div>

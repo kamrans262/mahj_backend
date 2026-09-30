@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminInvitationController;
 use App\Http\Controllers\AdminMatchController;
 use App\Http\Controllers\AdminSportController;
 use Illuminate\Support\Facades\Route;
@@ -28,6 +29,7 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::patch('/sports/{sport}', [AdminSportController::class, 'update'])->name('sports.update');
 
         Route::get('/matches', [AdminMatchController::class, 'index'])->name('matches');
+        Route::get('/invitations', [AdminInvitationController::class, 'index'])->name('invitations');
         Route::get('/matches/{match}', [AdminMatchController::class, 'show'])->name('matches.show');
         Route::patch('/matches/{match}', [AdminMatchController::class, 'update'])->name('matches.update');
         Route::delete('/matches/{match}', [AdminMatchController::class, 'destroy'])->name('matches.delete');

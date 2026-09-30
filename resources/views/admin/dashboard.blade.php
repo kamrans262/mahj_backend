@@ -21,6 +21,9 @@
     <a class="quick" href="{{ route('admin.matches') }}">
         <div class="quick-main"><div class="quick-icon">M</div><div><b>Manage matches</b><span>Review hosts, players and match status.</span></div></div><strong>→</strong>
     </a>
+    <a class="quick" href="{{ route('admin.invitations') }}">
+        <div class="quick-main"><div class="quick-icon">I</div><div><b>Review invitations</b><span>See pending, accepted and declined match invites.</span></div></div><strong>→</strong>
+    </a>
 </section>
 
 <section class="grid2">

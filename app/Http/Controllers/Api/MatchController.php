@@ -434,6 +434,13 @@ class MatchController extends Controller
             return;
         }
 
+        if ($match->invitations()
+            ->where('invitee_user_id', $user->id)
+            ->whereIn('status', ['pending', 'accepted'])
+            ->exists()) {
+            return;
+        }
+
         abort(403, 'This match is private.');
     }
 

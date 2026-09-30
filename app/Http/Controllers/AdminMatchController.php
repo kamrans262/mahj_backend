@@ -45,7 +45,13 @@ class AdminMatchController extends Controller
 
     public function show(MahjMatch $match): View
     {
-        $match->load(['host', 'players', 'sport'])->loadCount('players');
+        $match->load([
+            'host',
+            'players',
+            'sport',
+            'invitations.inviter',
+            'invitations.invitee',
+        ])->loadCount('players');
 
         return view('admin.matches.show', [
             'match' => $match,
