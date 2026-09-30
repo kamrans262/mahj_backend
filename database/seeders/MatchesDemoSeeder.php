@@ -44,6 +44,8 @@ class MatchesDemoSeeder extends Seeder
                 'starts_at' => now()->addDay()->setTime(18, 0),
                 'notes' => 'Friendly game. Please arrive 10 minutes early.',
                 'status' => 'open',
+                'is_featured' => true,
+                'featured_order' => 10,
                 'players' => ['demo.austen@mahj.test'],
             ],
             [
@@ -54,6 +56,8 @@ class MatchesDemoSeeder extends Seeder
                 'starts_at' => now()->addDay()->setTime(19, 30),
                 'notes' => 'Casual match. All levels welcome.',
                 'status' => 'open',
+                'is_featured' => true,
+                'featured_order' => 20,
                 'players' => [
                     'demo.alex@mahj.test',
                     'demo.jenny@mahj.test',
@@ -67,6 +71,8 @@ class MatchesDemoSeeder extends Seeder
                 'starts_at' => now()->addDays(2)->setTime(17, 30),
                 'notes' => 'One opening left.',
                 'status' => 'open',
+                'is_featured' => false,
+                'featured_order' => 0,
                 'players' => [
                     'demo.jenny@mahj.test',
                     'demo.daniel@mahj.test',
@@ -81,6 +87,8 @@ class MatchesDemoSeeder extends Seeder
                 'starts_at' => now()->addDays(2)->setTime(20, 0),
                 'notes' => 'Confirmed four-player match.',
                 'status' => 'confirmed',
+                'is_featured' => false,
+                'featured_order' => 0,
                 'players' => [
                     'demo.daniel@mahj.test',
                     'demo.austen@mahj.test',
@@ -96,6 +104,8 @@ class MatchesDemoSeeder extends Seeder
                 'starts_at' => now()->addDays(3)->setTime(18, 30),
                 'notes' => 'Open match with two spots available.',
                 'status' => 'open',
+                'is_featured' => false,
+                'featured_order' => 0,
                 'players' => [
                     'demo.sophia@mahj.test',
                     'demo.marcus@mahj.test',
@@ -124,6 +134,8 @@ class MatchesDemoSeeder extends Seeder
                     'is_public' => true,
                     'is_invite_only' => false,
                     'status' => $definition['status'],
+                    'is_featured' => $definition['is_featured'],
+                    'featured_order' => $definition['featured_order'],
                     'max_players' => 4,
                     'notes' => $definition['notes'],
                     'cancelled_at' => null,
