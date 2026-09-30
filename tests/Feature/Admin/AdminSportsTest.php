@@ -28,7 +28,7 @@ class AdminSportsTest extends TestCase
         $this->actingAs($admin)
             ->get('/admin/sports')
             ->assertOk()
-            ->assertSeeText('Racquetball');
+            ->assertSee('value="Racquetball"', false);
 
         $this->actingAs($admin)
             ->patch('/admin/sports/'.$sport->id, [
