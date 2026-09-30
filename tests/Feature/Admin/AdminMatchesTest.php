@@ -17,6 +17,7 @@ class AdminMatchesTest extends TestCase
         $host = User::factory()->create();
         $match = MahjMatch::query()->create([
             'host_user_id' => $host->id,
+            'name' => 'Basketball',
             'location_address' => 'Central Park, New York',
             'venue_name' => 'Central Park View',
             'starts_at' => now()->addDay(),
@@ -30,6 +31,7 @@ class AdminMatchesTest extends TestCase
         $this->actingAs($admin)
             ->get('/admin/matches')
             ->assertOk()
+            ->assertSeeText('Basketball')
             ->assertSeeText('Central Park View');
 
         $this->actingAs($admin)
@@ -40,6 +42,7 @@ class AdminMatchesTest extends TestCase
 
         $this->actingAs($admin)
             ->patch('/admin/matches/'.$match->id, [
+                'name' => 'Evening Basketball',
                 'location_address' => $match->location_address,
                 'venue_name' => 'Updated Court',
                 'notes' => 'Bring a ball.',
@@ -51,6 +54,7 @@ class AdminMatchesTest extends TestCase
 
         $match->refresh();
         $this->assertSame('cancelled', $match->status);
+        $this->assertSame('Evening Basketball', $match->name);
         $this->assertSame('Updated Court', $match->venue_name);
         $this->assertSame('Bring a ball.', $match->notes);
         $this->assertNotNull($match->cancelled_at);
