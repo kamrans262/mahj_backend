@@ -25,7 +25,21 @@
             <form method="post" action="{{ route('admin.matches.update',$match) }}">
                 @csrf @method('patch')
                 <div class="form-grid">
-                    <div class="span2 field"><label>Sport / match name</label><input class="input" name="name" value="{{ old('name',$match->name) }}" required></div>
+                    <div class="field">
+                        <label>Sport</label>
+                        <select class="select" name="sport_id">
+                            <option value="">Other / custom</option>
+                            @foreach($sports as $sport)
+                                <option value="{{ $sport->id }}" @selected((string) old('sport_id',$match->sport_id) === (string) $sport->id)>
+                                    {{ $sport->name }}{{ $sport->is_active ? '' : ' (inactive)' }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label>Custom sport name</label>
+                        <input class="input" name="custom_sport_name" value="{{ old('custom_sport_name',$match->custom_sport_name) }}" placeholder="Required only for Other">
+                    </div>
                     <div class="span2 field"><label>Location / address</label><input class="input" name="location_address" value="{{ old('location_address',$match->location_address) }}" required></div>
                     <div class="field"><label>Venue name</label><input class="input" name="venue_name" value="{{ old('venue_name',$match->venue_name) }}"></div>
                     <div class="field"><label>Starts at</label><input class="input" type="datetime-local" name="starts_at" value="{{ old('starts_at',$match->starts_at->format('Y-m-d\\TH:i')) }}" required></div>
