@@ -35,6 +35,7 @@ class MatchesDemoSeeder extends Seeder
         $definitions = [
             [
                 'host' => 'demo.austen@mahj.test',
+                'name' => 'Basketball',
                 'venue_name' => 'Central Park View',
                 'location_address' => 'Central Park, New York, NY',
                 'starts_at' => now()->addDay()->setTime(18, 0),
@@ -44,6 +45,7 @@ class MatchesDemoSeeder extends Seeder
             ],
             [
                 'host' => 'demo.alex@mahj.test',
+                'name' => 'Football',
                 'venue_name' => 'Riverside Court',
                 'location_address' => 'Riverside Park, New York, NY',
                 'starts_at' => now()->addDay()->setTime(19, 30),
@@ -56,6 +58,7 @@ class MatchesDemoSeeder extends Seeder
             ],
             [
                 'host' => 'demo.jenny@mahj.test',
+                'name' => 'Tennis',
                 'venue_name' => 'Downtown Sports Center',
                 'location_address' => 'Downtown, New York, NY',
                 'starts_at' => now()->addDays(2)->setTime(17, 30),
@@ -69,6 +72,7 @@ class MatchesDemoSeeder extends Seeder
             ],
             [
                 'host' => 'demo.daniel@mahj.test',
+                'name' => 'Basketball',
                 'venue_name' => 'Sunset Community Court',
                 'location_address' => 'West Side, New York, NY',
                 'starts_at' => now()->addDays(2)->setTime(20, 0),
@@ -83,6 +87,7 @@ class MatchesDemoSeeder extends Seeder
             ],
             [
                 'host' => 'demo.sophia@mahj.test',
+                'name' => 'Football',
                 'venue_name' => 'East Side Courts',
                 'location_address' => 'East Side, New York, NY',
                 'starts_at' => now()->addDays(3)->setTime(18, 30),
@@ -105,6 +110,7 @@ class MatchesDemoSeeder extends Seeder
                     'venue_name' => $definition['venue_name'],
                 ],
                 [
+                    'name' => $definition['name'],
                     'location_address' => $definition['location_address'],
                     'starts_at' => $definition['starts_at'],
                     'is_public' => true,
