@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\MatchResource;
 use App\Models\MahjMatch;
+use App\Models\Sport;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,7 +20,7 @@ class MatchController extends Controller
         $user = $request->user();
 
         $matches = MahjMatch::query()
-            ->with(['host', 'players'])
+            ->with(['host', 'players', 'sport'])
             ->withCount('players')
             ->where(function ($query) use ($user): void {
                 $query->where(function ($query): void {
@@ -52,7 +53,9 @@ class MatchController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:120'],
+            'sport_id' => ['nullable', 'integer', 'exists:sports,id', 'required_without_all:custom_sport_name,name'],
+            'custom_sport_name' => ['nullable', 'string', 'max:100', 'required_without_all:sport_id,name'],
+            'name' => ['nullable', 'string', 'max:120', 'required_without_all:sport_id,custom_sport_name'],
             'location_address' => ['required', 'string', 'max:255'],
             'venue_name' => ['nullable', 'string', 'max:160'],
             'starts_at' => ['required', 'date', 'after:now'],
@@ -66,12 +69,32 @@ class MatchController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        $match = DB::transaction(function () use ($validated, $user): MahjMatch {
+        $sport = isset($validated['sport_id'])
+            ? Sport::query()->where('is_active', true)->find($validated['sport_id'])
+            : null;
+
+        if (isset($validated['sport_id']) && $sport === null) {
+            throw ValidationException::withMessages([
+                'sport_id' => ['The selected sport is not available.'],
+            ]);
+        }
+
+        $customSportName = filled($validated['custom_sport_name'] ?? null)
+            ? trim((string) $validated['custom_sport_name'])
+            : null;
+        $legacyName = filled($validated['name'] ?? null)
+            ? trim((string) $validated['name'])
+            : null;
+        $displayName = $sport?->name ?? $customSportName ?? $legacyName;
+
+        $match = DB::transaction(function () use ($validated, $user, $sport, $customSportName, $displayName): MahjMatch {
             $inviteOnly = (bool) $validated['is_invite_only'];
 
             $match = MahjMatch::query()->create([
                 'host_user_id' => $user->id,
-                'name' => trim($validated['name']),
+                'name' => $displayName,
+                'sport_id' => $sport?->id,
+                'custom_sport_name' => $sport === null ? $customSportName : null,
                 'location_address' => trim($validated['location_address']),
                 'venue_name' => filled($validated['venue_name'] ?? null)
                     ? trim((string) $validated['venue_name'])
@@ -243,7 +266,7 @@ class MatchController extends Controller
 
     private function resource(Request $request, MahjMatch $match): array
     {
-        $match->load(['host', 'players'])->loadCount('players');
+        $match->load(['host', 'players', 'sport'])->loadCount('players');
 
         return (new MatchResource($match))->resolve($request);
     }
