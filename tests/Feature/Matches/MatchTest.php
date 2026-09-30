@@ -17,6 +17,7 @@ class MatchTest extends TestCase
 
         $response = $this->actingAs($host, 'sanctum')
             ->postJson('/api/matches', [
+                'name' => 'Basketball',
                 'location_address' => 'Central Park, New York',
                 'venue_name' => 'Central Park View',
                 'starts_at' => now()->addDay()->toISOString(),
@@ -24,6 +25,8 @@ class MatchTest extends TestCase
                 'is_invite_only' => false,
             ])
             ->assertCreated()
+            ->assertJsonPath('match.name', 'Basketball')
+            ->assertJsonPath('match.sport_name', 'Basketball')
             ->assertJsonPath('match.status', 'open')
             ->assertJsonPath('match.current_players', 1)
             ->assertJsonPath('match.max_players', 4)
@@ -35,6 +38,7 @@ class MatchTest extends TestCase
         $this->assertDatabaseHas('matches', [
             'id' => $matchId,
             'host_user_id' => $host->id,
+            'name' => 'Basketball',
             'max_players' => 4,
             'status' => 'open',
         ]);
@@ -143,6 +147,7 @@ class MatchTest extends TestCase
     {
         $match = MahjMatch::query()->create([
             'host_user_id' => $host->id,
+            'name' => 'Basketball',
             'location_address' => 'Central Park, New York',
             'venue_name' => 'Central Park View',
             'starts_at' => now()->addDay(),
