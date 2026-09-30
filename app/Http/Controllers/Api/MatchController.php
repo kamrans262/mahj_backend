@@ -52,6 +52,7 @@ class MatchController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
             'location_address' => ['required', 'string', 'max:255'],
             'venue_name' => ['nullable', 'string', 'max:160'],
             'starts_at' => ['required', 'date', 'after:now'],
@@ -70,6 +71,7 @@ class MatchController extends Controller
 
             $match = MahjMatch::query()->create([
                 'host_user_id' => $user->id,
+                'name' => trim($validated['name']),
                 'location_address' => trim($validated['location_address']),
                 'venue_name' => filled($validated['venue_name'] ?? null)
                     ? trim((string) $validated['venue_name'])
