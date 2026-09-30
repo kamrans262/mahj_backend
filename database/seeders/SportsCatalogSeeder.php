@@ -25,7 +25,7 @@ class SportsCatalogSeeder extends Seeder
         ];
 
         foreach ($sports as $attributes) {
-            Sport::query()->updateOrCreate(
+            Sport::query()->firstOrCreate(
                 ['slug' => $attributes['slug']],
                 $attributes + ['is_active' => true],
             );
