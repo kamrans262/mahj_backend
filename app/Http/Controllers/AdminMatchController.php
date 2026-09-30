@@ -19,7 +19,8 @@ class AdminMatchController extends Controller
             ->with('host')
             ->withCount('players')
             ->when($search !== '', fn ($query) => $query->where(function ($query) use ($search): void {
-                $query->where('location_address', 'like', "%{$search}%")
+                $query->where('name', 'like', "%{$search}%")
+                    ->orWhere('location_address', 'like', "%{$search}%")
                     ->orWhere('venue_name', 'like', "%{$search}%")
                     ->orWhereHas('host', fn ($query) => $query
                         ->where('name', 'like', "%{$search}%")
@@ -51,6 +52,7 @@ class AdminMatchController extends Controller
     public function update(Request $request, MahjMatch $match): RedirectResponse
     {
         $validated = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
             'location_address' => ['required', 'string', 'max:255'],
             'venue_name' => ['nullable', 'string', 'max:160'],
             'notes' => ['nullable', 'string', 'max:1000'],
@@ -63,6 +65,7 @@ class AdminMatchController extends Controller
         $inviteOnly = $request->boolean('is_invite_only');
 
         $match->update([
+            'name' => trim($validated['name']),
             'location_address' => trim($validated['location_address']),
             'venue_name' => filled($validated['venue_name'] ?? null)
                 ? trim((string) $validated['venue_name'])
