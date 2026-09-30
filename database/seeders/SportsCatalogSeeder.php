@@ -31,14 +31,25 @@ class SportsCatalogSeeder extends Seeder
             );
         }
 
-        $knownSports = Sport::query()->get()->keyBy(fn (Sport $sport) => strtolower($sport->name));
+        $allSports = Sport::query()->get();
+        $knownSports = $allSports->keyBy(fn (Sport $sport) => strtolower($sport->name));
+        $sportsBySlug = $allSports->keyBy('slug');
+        $legacyAliases = [
+            'football' => 'american-football',
+            'basket ball' => 'basketball',
+            'icehockey' => 'ice-hockey',
+        ];
 
         MahjMatch::query()
             ->whereNull('sport_id')
             ->whereNull('custom_sport_name')
-            ->chunkById(100, function ($matches) use ($knownSports): void {
+            ->chunkById(100, function ($matches) use ($knownSports, $sportsBySlug, $legacyAliases): void {
                 foreach ($matches as $match) {
-                    $sport = $knownSports->get(strtolower(trim((string) $match->name)));
+                    $legacyName = strtolower(trim((string) $match->name));
+                    $sport = $knownSports->get($legacyName);
+                    if ($sport === null && isset($legacyAliases[$legacyName])) {
+                        $sport = $sportsBySlug->get($legacyAliases[$legacyName]);
+                    }
 
                     if ($sport !== null) {
                         $match->update([
