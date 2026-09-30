@@ -62,4 +62,14 @@ class User extends Authenticatable
             ->withPivot('joined_at')
             ->withTimestamps();
     }
+
+    public function sentMatchInvitations(): HasMany
+    {
+        return $this->hasMany(MatchInvitation::class, 'inviter_user_id');
+    }
+
+    public function receivedMatchInvitations(): HasMany
+    {
+        return $this->hasMany(MatchInvitation::class, 'invitee_user_id');
+    }
 }
