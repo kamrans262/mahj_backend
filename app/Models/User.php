@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -47,5 +49,17 @@ class User extends Authenticatable
     public function subscription(): HasOne
     {
         return $this->hasOne(UserSubscription::class);
+    }
+
+    public function hostedMatches(): HasMany
+    {
+        return $this->hasMany(MahjMatch::class, 'host_user_id');
+    }
+
+    public function joinedMatches(): BelongsToMany
+    {
+        return $this->belongsToMany(MahjMatch::class, 'match_players', 'user_id', 'match_id')
+            ->withPivot('joined_at')
+            ->withTimestamps();
     }
 }

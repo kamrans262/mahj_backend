@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\MatchController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\SportController;
 use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\StripeWebhookController;
 use Illuminate\Support\Facades\Route;
@@ -41,4 +43,13 @@ Route::middleware(['auth:sanctum', 'account.active'])->group(function (): void {
     Route::post('/subscription/confirm-checkout', [SubscriptionController::class, 'confirmCheckout']);
     Route::put('/subscription/plan', [SubscriptionController::class, 'changePlan']);
     Route::post('/subscription/cancel', [SubscriptionController::class, 'cancel']);
+
+    Route::get('/sports', [SportController::class, 'index']);
+
+    Route::get('/matches', [MatchController::class, 'index']);
+    Route::post('/matches', [MatchController::class, 'store']);
+    Route::get('/matches/{match}', [MatchController::class, 'show']);
+    Route::post('/matches/{match}/join', [MatchController::class, 'join']);
+    Route::post('/matches/{match}/leave', [MatchController::class, 'leave']);
+    Route::post('/matches/{match}/cancel', [MatchController::class, 'cancel']);
 });
