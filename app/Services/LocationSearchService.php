@@ -24,7 +24,7 @@ class LocationSearchService
         }
 
         $limit = max(1, min($limit, 8));
-        $cacheKey = 'mahj:google-location-search:'.sha1(mb_strtolower($query)."|".$limit);
+        $cacheKey = 'mahj:google-location-search:v2:'.sha1(mb_strtolower($query)."|".$limit);
 
         return Cache::remember($cacheKey, now()->addDays(30), function () use ($query, $limit, $apiKey): array {
             try {
@@ -37,7 +37,6 @@ class LocationSearchService
                     ->timeout(6)
                     ->get($url, [
                         'address' => $query,
-                        'components' => 'country:US',
                         'key' => $apiKey,
                     ]);
 
