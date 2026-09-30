@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\MahjMatch;
+use App\Models\Sport;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -16,7 +17,7 @@ class AdminMatchController extends Controller
         $status = trim((string) $request->query('status'));
 
         $matches = MahjMatch::query()
-            ->with('host')
+            ->with(['host', 'sport'])
             ->withCount('players')
             ->when($search !== '', fn ($query) => $query->where(function ($query) use ($search): void {
                 $query->where('name', 'like', "%{$search}%")
@@ -44,15 +45,22 @@ class AdminMatchController extends Controller
 
     public function show(MahjMatch $match): View
     {
-        $match->load(['host', 'players'])->loadCount('players');
+        $match->load(['host', 'players', 'sport'])->loadCount('players');
 
-        return view('admin.matches.show', compact('match'));
+        return view('admin.matches.show', [
+            'match' => $match,
+            'sports' => Sport::query()
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get(),
+        ]);
     }
 
     public function update(Request $request, MahjMatch $match): RedirectResponse
     {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:120'],
+            'sport_id' => ['nullable', 'integer', 'exists:sports,id', 'required_without:custom_sport_name'],
+            'custom_sport_name' => ['nullable', 'string', 'max:100', 'required_without:sport_id'],
             'location_address' => ['required', 'string', 'max:255'],
             'venue_name' => ['nullable', 'string', 'max:160'],
             'notes' => ['nullable', 'string', 'max:1000'],
@@ -63,9 +71,18 @@ class AdminMatchController extends Controller
         ]);
 
         $inviteOnly = $request->boolean('is_invite_only');
+        $sport = isset($validated['sport_id'])
+            ? Sport::query()->find($validated['sport_id'])
+            : null;
+        $customSportName = filled($validated['custom_sport_name'] ?? null)
+            ? trim((string) $validated['custom_sport_name'])
+            : null;
+        $displayName = $sport?->name ?? $customSportName;
 
         $match->update([
-            'name' => trim($validated['name']),
+            'name' => $displayName,
+            'sport_id' => $sport?->id,
+            'custom_sport_name' => $sport === null ? $customSportName : null,
             'location_address' => trim($validated['location_address']),
             'venue_name' => filled($validated['venue_name'] ?? null)
                 ? trim((string) $validated['venue_name'])
