@@ -68,6 +68,8 @@ class AdminMatchController extends Controller
             'status' => ['required', Rule::in(['open', 'confirmed', 'cancelled', 'completed'])],
             'is_public' => ['nullable', 'boolean'],
             'is_invite_only' => ['nullable', 'boolean'],
+            'is_featured' => ['nullable', 'boolean'],
+            'featured_order' => ['nullable', 'integer', 'min:0', 'max:65535'],
         ]);
 
         $inviteOnly = $request->boolean('is_invite_only');
@@ -94,6 +96,8 @@ class AdminMatchController extends Controller
             'status' => $validated['status'],
             'is_public' => $inviteOnly ? false : $request->boolean('is_public'),
             'is_invite_only' => $inviteOnly,
+            'is_featured' => $request->boolean('is_featured'),
+            'featured_order' => (int) ($validated['featured_order'] ?? 0),
             'cancelled_at' => $validated['status'] === 'cancelled'
                 ? ($match->cancelled_at ?? now())
                 : null,
