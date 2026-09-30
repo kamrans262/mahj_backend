@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\LocationController;
+use App\Http\Controllers\Api\MatchChatController;
 use App\Http\Controllers\Api\MatchController;
 use App\Http\Controllers\Api\MatchInvitationController;
 use App\Http\Controllers\Api\ProfileController;
@@ -57,6 +58,8 @@ Route::middleware(['auth:sanctum', 'account.active'])->group(function (): void {
     Route::post('/matches/{match}/join', [MatchController::class, 'join']);
     Route::post('/matches/{match}/leave', [MatchController::class, 'leave']);
     Route::post('/matches/{match}/cancel', [MatchController::class, 'cancel']);
+    Route::get('/matches/{match}/chat', [MatchChatController::class, 'index']);
+    Route::post('/matches/{match}/chat/messages', [MatchChatController::class, 'send']);
     Route::get('/matches/{match}/invite-candidates', [MatchInvitationController::class, 'candidates']);
     Route::post('/matches/{match}/invitations', [MatchInvitationController::class, 'send']);
     Route::post('/invitations/{invitation}/accept', [MatchInvitationController::class, 'accept']);
