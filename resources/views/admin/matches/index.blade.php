@@ -31,7 +31,12 @@
                     <td><b>{{ $match->sport?->name ?? $match->custom_sport_name ?? $match->name }}</b><div style="color:#667085;font-size:10px;margin-top:3px">{{ $match->venue_name ?: $match->location_address }}</div></td>
                     <td><b>{{ $match->host->name }}</b><div style="color:#667085;font-size:10px;margin-top:3px">{{ $match->host->email }}</div></td>
                     <td>{{ $match->players_count }}/{{ $match->max_players }}</td>
-                    <td><span class="badge {{ $match->status === 'open' ? 'success' : ($match->status === 'cancelled' ? 'danger' : 'orange') }}">{{ ucfirst($match->status) }}</span></td>
+                    <td>
+                        <span class="badge {{ $match->status === 'open' ? 'success' : ($match->status === 'cancelled' ? 'danger' : 'orange') }}">{{ ucfirst($match->status) }}</span>
+                        @if($match->is_featured)
+                            <span class="badge orange" style="margin-left:5px">Featured</span>
+                        @endif
+                    </td>
                     <td>{{ $match->starts_at->format('M j, Y · g:i A') }}</td>
                     <td><a class="btn btn-secondary" href="{{ route('admin.matches.show',$match) }}">Manage</a></td>
                 </tr>
