@@ -7,6 +7,7 @@ use App\Http\Resources\MatchResource;
 use App\Models\MahjMatch;
 use App\Models\Sport;
 use App\Models\User;
+use App\Services\MatchChatService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,6 +18,10 @@ use Illuminate\Validation\ValidationException;
 
 class MatchController extends Controller
 {
+    public function __construct(private readonly MatchChatService $chat)
+    {
+    }
+
     private const MAX_DISCOVERY_ROWS = 250;
     private const MAX_RESPONSE_ROWS = 100;
     private const EARTH_RADIUS_MILES = 3958.7613;
@@ -274,10 +279,12 @@ class MatchController extends Controller
             }
 
             $locked->players()->attach($user->id, ['joined_at' => now()]);
+            $this->chat->playerJoined($locked, $user);
             $count++;
 
             if ($count >= $locked->max_players) {
                 $locked->update(['status' => 'confirmed']);
+                $this->chat->matchConfirmed($locked);
             }
 
             return $locked;
@@ -317,6 +324,7 @@ class MatchController extends Controller
             }
 
             $locked->players()->detach($user->id);
+            $this->chat->playerLeft($locked, $user);
             $count = $locked->players()->count();
 
             if ($locked->status === 'confirmed' && $count < $locked->max_players) {
@@ -352,6 +360,7 @@ class MatchController extends Controller
                 'status' => 'cancelled',
                 'cancelled_at' => now(),
             ]);
+            $this->chat->matchCancelled($match);
         }
 
         return response()->json([
