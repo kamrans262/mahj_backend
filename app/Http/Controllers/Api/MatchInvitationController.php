@@ -93,9 +93,6 @@ class MatchInvitationController extends Controller
         ]);
 
         $search = trim((string) ($validated['q'] ?? ''));
-        if ($search === '') {
-            return response()->json(['data' => []]);
-        }
 
         $excludedPlayerIds = $match->players()->pluck('users.id');
         $excludedInvitationIds = MatchInvitation::query()
@@ -103,19 +100,23 @@ class MatchInvitationController extends Controller
             ->where('status', 'pending')
             ->pluck('invitee_user_id');
 
-        $like = '%'.$search.'%';
         $users = User::query()
             ->where('id', '!=', $match->host_user_id)
             ->where('is_suspended', false)
             ->whereNotIn('id', $excludedPlayerIds)
             ->whereNotIn('id', $excludedInvitationIds)
-            ->where(function (Builder $query) use ($like): void {
-                $query->where('name', 'like', $like)
-                    ->orWhere('email', 'like', $like)
-                    ->orWhere('city', 'like', $like);
+            ->when($search !== '', function (Builder $query) use ($search): void {
+                $like = '%'.$search.'%';
+
+                $query->where(function (Builder $query) use ($like): void {
+                    $query->where('name', 'like', $like)
+                        ->orWhere('email', 'like', $like)
+                        ->orWhere('city', 'like', $like)
+                        ->orWhere('state', 'like', $like);
+                });
             })
             ->orderBy('name')
-            ->limit(30)
+            ->orderBy('id')
             ->get();
 
         return response()->json([
