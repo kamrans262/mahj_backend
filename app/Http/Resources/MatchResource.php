@@ -5,7 +5,6 @@ namespace App\Http\Resources;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Storage;
 
 /** @mixin \App\Models\MahjMatch */
 class MatchResource extends JsonResource
@@ -26,7 +25,7 @@ class MatchResource extends JsonResource
             ?? $this->custom_sport_name
             ?? $this->name;
         $bannerImageUrl = $this->sport?->banner_image_path
-            ? rtrim($request->getSchemeAndHttpHost(), '/').Storage::disk('public')->url($this->sport->banner_image_path)
+            ? rtrim($request->getSchemeAndHttpHost(), '/').'/storage/'.ltrim($this->sport->banner_image_path, '/')
             : null;
 
         return [
