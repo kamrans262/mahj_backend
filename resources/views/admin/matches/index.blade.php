@@ -7,7 +7,7 @@
 <div class="toolbar">
     <div>
         <div class="card-title">{{ $totalMatches }} total matches</div>
-        <div class="card-copy">Search by venue, location or host and open a match to manage it.</div>
+        <div class="card-copy">Search by match name, venue, location or host and open a match to manage it.</div>
     </div>
     <form class="search" method="get" action="{{ route('admin.matches') }}">
         <input class="input" name="search" value="{{ $search }}" placeholder="Search matches">
@@ -28,7 +28,7 @@
             <tbody>
             @forelse($matches as $match)
                 <tr>
-                    <td><b>{{ $match->venue_name ?: 'Mahj Match' }}</b><div style="color:#667085;font-size:10px;margin-top:3px">{{ $match->location_address }}</div></td>
+                    <td><b>{{ $match->name }}</b><div style="color:#667085;font-size:10px;margin-top:3px">{{ $match->venue_name ?: $match->location_address }}</div></td>
                     <td><b>{{ $match->host->name }}</b><div style="color:#667085;font-size:10px;margin-top:3px">{{ $match->host->email }}</div></td>
                     <td>{{ $match->players_count }}/{{ $match->max_players }}</td>
                     <td><span class="badge {{ $match->status === 'open' ? 'success' : ($match->status === 'cancelled' ? 'danger' : 'orange') }}">{{ ucfirst($match->status) }}</span></td>
