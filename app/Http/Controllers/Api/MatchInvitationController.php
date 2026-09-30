@@ -80,7 +80,9 @@ class MatchInvitationController extends Controller
 
     public function candidates(Request $request, MahjMatch $match): JsonResponse
     {
-        $this->ensureHost($request->user(), $match);
+        /** @var User $user */
+        $user = $request->user();
+        $this->ensureCanInvite($user, $match);
 
         if ($match->status !== 'open') {
             throw ValidationException::withMessages([
@@ -102,6 +104,7 @@ class MatchInvitationController extends Controller
 
         $users = User::query()
             ->where('id', '!=', $match->host_user_id)
+            ->where('id', '!=', $user->id)
             ->where('is_suspended', false)
             ->whereNotIn('id', $excludedPlayerIds)
             ->whereNotIn('id', $excludedInvitationIds)
@@ -134,7 +137,7 @@ class MatchInvitationController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
-        $this->ensureHost($user, $match);
+        $this->ensureCanInvite($user, $match);
 
         $validated = $request->validate([
             'user_ids' => ['required', 'array', 'min:1', 'max:20'],
@@ -273,11 +276,21 @@ class MatchInvitationController extends Controller
         ]);
     }
 
-    private function ensureHost(User $user, MahjMatch $match): void
+    private function ensureCanInvite(User $user, MahjMatch $match): void
     {
-        if ($match->host_user_id !== $user->id) {
-            abort(403, 'Only the host can manage invitations for this match.');
+        if ($match->host_user_id === $user->id) {
+            return;
         }
+
+        if ($match->players()->whereKey($user->id)->exists()) {
+            return;
+        }
+
+        if ($match->is_public && ! $match->is_invite_only) {
+            return;
+        }
+
+        abort(403, 'You cannot invite players to this match.');
     }
 
     private function ensureInvitee(User $user, MatchInvitation $invitation): void
