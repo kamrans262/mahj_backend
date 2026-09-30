@@ -70,4 +70,9 @@ class MahjMatch extends Model
     {
         return $this->hasMany(MatchInvitation::class, 'match_id');
     }
+
+    public function chatMessages(): HasMany
+    {
+        return $this->hasMany(MatchChatMessage::class, 'match_id');
+    }
 }
