@@ -82,6 +82,12 @@ class MatchInvitationController extends Controller
     {
         $this->ensureHost($request->user(), $match);
 
+        if ($match->status !== 'open') {
+            throw ValidationException::withMessages([
+                'match' => ['This match is not open for invitations.'],
+            ]);
+        }
+
         $validated = $request->validate([
             'q' => ['nullable', 'string', 'max:120'],
         ]);
@@ -99,7 +105,7 @@ class MatchInvitationController extends Controller
 
         $like = '%'.$search.'%';
         $users = User::query()
-            ->whereKeyNot($match->host_user_id)
+            ->where('id', '!=', $match->host_user_id)
             ->where('is_suspended', false)
             ->whereNotIn('id', $excludedPlayerIds)
             ->whereNotIn('id', $excludedInvitationIds)
@@ -134,9 +140,9 @@ class MatchInvitationController extends Controller
             'user_ids.*' => ['required', 'integer', 'distinct', 'exists:users,id'],
         ]);
 
-        if (in_array($match->status, ['cancelled', 'completed'], true)) {
+        if ($match->status !== 'open') {
             throw ValidationException::withMessages([
-                'match' => ['Invitations cannot be sent for this match.'],
+                'match' => ['This match is not open for invitations.'],
             ]);
         }
 
