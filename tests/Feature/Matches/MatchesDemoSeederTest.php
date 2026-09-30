@@ -29,5 +29,8 @@ class MatchesDemoSeederTest extends TestCase
         $this->assertSame([1, 2, 2, 3, 4], $counts);
         $this->assertSame(1, MahjMatch::query()->where('status', 'confirmed')->count());
         $this->assertSame(4, MahjMatch::query()->where('status', 'open')->count());
+        $this->assertTrue(MahjMatch::query()->where('name', 'Basketball')->exists());
+        $this->assertTrue(MahjMatch::query()->where('name', 'Football')->exists());
+        $this->assertTrue(MahjMatch::query()->where('name', 'Tennis')->exists());
     }
 }
