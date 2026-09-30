@@ -16,6 +16,8 @@ class MahjMatch extends Model
     protected $fillable = [
         'host_user_id',
         'name',
+        'sport_id',
+        'custom_sport_name',
         'location_address',
         'venue_name',
         'starts_at',
@@ -45,6 +47,11 @@ class MahjMatch extends Model
     public function host(): BelongsTo
     {
         return $this->belongsTo(User::class, 'host_user_id');
+    }
+
+    public function sport(): BelongsTo
+    {
+        return $this->belongsTo(Sport::class);
     }
 
     public function players(): BelongsToMany
