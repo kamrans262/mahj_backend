@@ -27,6 +27,7 @@ class MatchResource extends JsonResource
         $bannerImageUrl = $this->sport?->banner_image_path
             ? rtrim($request->getSchemeAndHttpHost(), '/').'/storage/'.ltrim($this->sport->banner_image_path, '/')
             : null;
+        $distance = $this->getAttribute('distance_miles');
 
         return [
             'id' => (string) $this->id,
@@ -56,6 +57,7 @@ class MatchResource extends JsonResource
             'notes' => $this->notes,
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
+            'distance_miles' => is_numeric($distance) ? (float) $distance : null,
             'host' => [
                 'id' => (string) $this->host_user_id,
                 'name' => $this->host?->name ?? 'Host',
