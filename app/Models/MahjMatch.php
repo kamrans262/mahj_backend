@@ -15,6 +15,7 @@ class MahjMatch extends Model
 
     protected $fillable = [
         'host_user_id',
+        'name',
         'location_address',
         'venue_name',
         'starts_at',
