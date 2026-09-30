@@ -7,6 +7,7 @@ use App\Http\Resources\MatchResource;
 use App\Models\MahjMatch;
 use App\Models\MatchInvitation;
 use App\Models\User;
+use App\Services\MatchChatService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,6 +16,10 @@ use Illuminate\Validation\ValidationException;
 
 class MatchInvitationController extends Controller
 {
+    public function __construct(private readonly MatchChatService $chat)
+    {
+    }
+
     private const EARTH_RADIUS_MILES = 3958.7613;
 
     public function myMatches(Request $request): JsonResponse
@@ -306,6 +311,7 @@ class MatchInvitationController extends Controller
             }
 
             $match->players()->attach($user->id, ['joined_at' => now()]);
+            $this->chat->playerJoined($match, $user);
             $count++;
 
             $lockedInvitation->update([
@@ -315,6 +321,7 @@ class MatchInvitationController extends Controller
 
             if ($count >= $match->max_players) {
                 $match->update(['status' => 'confirmed']);
+                $this->chat->matchConfirmed($match);
             }
 
             return $match;
