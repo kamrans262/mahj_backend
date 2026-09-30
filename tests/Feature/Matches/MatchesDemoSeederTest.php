@@ -4,7 +4,7 @@ namespace Tests\Feature\Matches;
 
 use App\Models\MahjMatch;
 use App\Models\User;
-use Database\Seeders\MatchesDemoSeeder;
+use Database\Seeders\DemoDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -14,8 +14,8 @@ class MatchesDemoSeederTest extends TestCase
 
     public function test_demo_seeder_creates_reusable_match_data_without_duplicates(): void
     {
-        $this->seed(MatchesDemoSeeder::class);
-        $this->seed(MatchesDemoSeeder::class);
+        $this->seed(DemoDataSeeder::class);
+        $this->seed(DemoDataSeeder::class);
 
         $this->assertSame(6, User::query()->where('email', 'like', 'demo.%@mahj.test')->count());
         $this->assertSame(5, MahjMatch::query()->count());
@@ -30,7 +30,8 @@ class MatchesDemoSeederTest extends TestCase
         $this->assertSame(1, MahjMatch::query()->where('status', 'confirmed')->count());
         $this->assertSame(4, MahjMatch::query()->where('status', 'open')->count());
         $this->assertTrue(MahjMatch::query()->where('name', 'Basketball')->exists());
-        $this->assertTrue(MahjMatch::query()->where('name', 'Football')->exists());
+        $this->assertTrue(MahjMatch::query()->where('name', 'American Football')->exists());
+        $this->assertTrue(MahjMatch::query()->where('name', 'Soccer')->exists());
         $this->assertTrue(MahjMatch::query()->where('name', 'Tennis')->exists());
     }
 }
