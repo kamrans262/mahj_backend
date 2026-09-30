@@ -17,6 +17,7 @@ class DemoDataSeeder extends Seeder
         $this->call([
             SportsCatalogSeeder::class,
             MatchesDemoSeeder::class,
+            M5InvitationsDemoSeeder::class,
         ]);
     }
 }
