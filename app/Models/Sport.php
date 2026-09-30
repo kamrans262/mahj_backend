@@ -14,6 +14,7 @@ class Sport extends Model
         'name',
         'slug',
         'icon_key',
+        'banner_image_path',
         'is_active',
         'sort_order',
     ];
