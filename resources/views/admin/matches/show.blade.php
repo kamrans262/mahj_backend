@@ -9,7 +9,7 @@
 <div class="grid2">
     <div class="card">
         <div class="card-pad">
-            <div class="card-head"><div><div class="card-title">{{ $match->name }}</div><div class="card-copy">{{ $match->venue_name ?: $match->location_address }}</div></div><span class="badge {{ $match->status === 'open' ? 'success' : ($match->status === 'cancelled' ? 'danger' : 'orange') }}">{{ ucfirst($match->status) }}</span></div>
+            <div class="card-head"><div><div class="card-title">{{ $match->sport?->name ?? $match->custom_sport_name ?? $match->name }}</div><div class="card-copy">{{ $match->venue_name ?: $match->location_address }}</div></div><span class="badge {{ $match->status === 'open' ? 'success' : ($match->status === 'cancelled' ? 'danger' : 'orange') }}">{{ ucfirst($match->status) }}</span></div>
             <div class="meta">
                 <div class="meta-row"><span>Host</span><b>{{ $match->host->name }} · {{ $match->host->email }}</b></div>
                 <div class="meta-row"><span>Starts</span><b>{{ $match->starts_at->format('M j, Y · g:i A') }}</b></div>
