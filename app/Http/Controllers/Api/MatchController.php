@@ -132,7 +132,7 @@ class MatchController extends Controller
 
                 return $distanceOrder !== 0
                     ? $distanceOrder
-                    : $left->starts_at <=> $right->starts_at;
+                    : $left->starts_at->getTimestamp() <=> $right->starts_at->getTimestamp();
             })->values();
         } else {
             $matches = $matches->sortBy('starts_at')->values();

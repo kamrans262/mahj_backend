@@ -63,7 +63,7 @@ class MatchFilterTest extends TestCase
         }
 
         $response = $this->actingAs($viewer, 'sanctum')
-            ->getJson('/api/matches?q=Riverside&open_spots_only=1&date_filter=today&sort=date&timezone_offset_minutes=0&discover_only=1')
+            ->getJson('/api/matches?q=Riverside&open_spots_only=1&date_filter=next_3_days&sort=date&timezone_offset_minutes=0&discover_only=1')
             ->assertOk();
 
         $ids = collect($response->json('data'))->pluck('id');
