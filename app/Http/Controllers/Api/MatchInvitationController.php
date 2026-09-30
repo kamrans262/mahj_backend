@@ -15,12 +15,29 @@ use Illuminate\Validation\ValidationException;
 
 class MatchInvitationController extends Controller
 {
+    private const EARTH_RADIUS_MILES = 3958.7613;
+
     public function myMatches(Request $request): JsonResponse
     {
         /** @var User $user */
         $user = $request->user();
 
-        $upcoming = MahjMatch::query()
+        $validated = $request->validate([
+            'latitude' => ['nullable', 'numeric', 'between:-90,90', 'required_with:longitude'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'upcoming_page' => ['nullable', 'integer', 'min:1'],
+            'created_page' => ['nullable', 'integer', 'min:1'],
+            'invites_page' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        $perPage = (int) ($validated['per_page'] ?? 20);
+        $upcomingPage = (int) ($validated['upcoming_page'] ?? 1);
+        $createdPage = (int) ($validated['created_page'] ?? 1);
+        $invitesPage = (int) ($validated['invites_page'] ?? 1);
+        $hasCoordinates = isset($validated['latitude'], $validated['longitude']);
+
+        $upcomingPaginator = MahjMatch::query()
             ->with(['host', 'players', 'sport'])
             ->withCount('players')
             ->where('host_user_id', '!=', $user->id)
@@ -28,18 +45,16 @@ class MatchInvitationController extends Controller
             ->where('starts_at', '>=', now()->subHours(3))
             ->where('status', '!=', 'completed')
             ->orderBy('starts_at')
-            ->limit(100)
-            ->get();
+            ->simplePaginate($perPage, ['*'], 'upcoming_page', $upcomingPage);
 
-        $created = MahjMatch::query()
+        $createdPaginator = MahjMatch::query()
             ->with(['host', 'players', 'sport'])
             ->withCount('players')
             ->where('host_user_id', $user->id)
             ->orderByDesc('starts_at')
-            ->limit(100)
-            ->get();
+            ->simplePaginate($perPage, ['*'], 'created_page', $createdPage);
 
-        $invitations = MatchInvitation::query()
+        $invitationsPaginator = MatchInvitation::query()
             ->with([
                 'inviter',
                 'match.host',
@@ -53,28 +68,76 @@ class MatchInvitationController extends Controller
                     ->where('starts_at', '>=', now()->subHours(3));
             })
             ->latest()
-            ->limit(100)
-            ->get();
+            ->simplePaginate($perPage, ['*'], 'invites_page', $invitesPage);
 
-        $inviteData = $invitations->map(function (MatchInvitation $invitation) use ($request): array {
-            $match = $invitation->match;
-            $match->setAttribute('players_count', $match->players->count());
+        $applyDistance = function (MahjMatch $match) use ($validated, $hasCoordinates): void {
+            if (! $hasCoordinates) {
+                return;
+            }
 
-            return [
-                'id' => (string) $invitation->id,
-                'status' => $invitation->status,
-                'inviter' => [
-                    'id' => (string) $invitation->inviter_user_id,
-                    'name' => $invitation->inviter?->name ?? 'Host',
-                ],
-                'match' => (new MatchResource($match))->resolve($request),
-            ];
-        })->values();
+            $distance = $this->distanceMiles(
+                (float) $validated['latitude'],
+                (float) $validated['longitude'],
+                $match->latitude,
+                $match->longitude,
+            );
+
+            $match->setAttribute(
+                'distance_miles',
+                $distance === null ? null : round($distance, 2),
+            );
+        };
+
+        $upcoming = collect($upcomingPaginator->items());
+        $upcoming->each($applyDistance);
+
+        $created = collect($createdPaginator->items());
+        $created->each($applyDistance);
+
+        $inviteData = collect($invitationsPaginator->items())
+            ->map(function (MatchInvitation $invitation) use ($request, $applyDistance): array {
+                $match = $invitation->match;
+                $match->setAttribute('players_count', $match->players->count());
+                $applyDistance($match);
+
+                $avatarUrl = $invitation->inviter?->avatar_path
+                    ? rtrim($request->getSchemeAndHttpHost(), '/')
+                        .'/storage/'
+                        .ltrim($invitation->inviter->avatar_path, '/')
+                    : null;
+
+                return [
+                    'id' => (string) $invitation->id,
+                    'status' => $invitation->status,
+                    'inviter' => [
+                        'id' => (string) $invitation->inviter_user_id,
+                        'name' => $invitation->inviter?->name ?? 'Host',
+                        'avatar_url' => $avatarUrl,
+                    ],
+                    'match' => (new MatchResource($match))->resolve($request),
+                ];
+            })
+            ->values();
 
         return response()->json([
             'upcoming' => MatchResource::collection($upcoming)->resolve($request),
             'created_by_me' => MatchResource::collection($created)->resolve($request),
             'invites' => $inviteData,
+            'meta' => [
+                'per_page' => $perPage,
+                'upcoming' => [
+                    'page' => $upcomingPage,
+                    'has_more' => $upcomingPaginator->hasMorePages(),
+                ],
+                'created_by_me' => [
+                    'page' => $createdPage,
+                    'has_more' => $createdPaginator->hasMorePages(),
+                ],
+                'invites' => [
+                    'page' => $invitesPage,
+                    'has_more' => $invitationsPaginator->hasMorePages(),
+                ],
+            ],
         ]);
     }
 
@@ -274,6 +337,31 @@ class MatchInvitationController extends Controller
         return response()->json([
             'message' => 'Invitation declined.',
         ]);
+    }
+
+    private function distanceMiles(
+        float $originLatitude,
+        float $originLongitude,
+        mixed $targetLatitude,
+        mixed $targetLongitude,
+    ): ?float {
+        if (! is_numeric($targetLatitude) || ! is_numeric($targetLongitude)) {
+            return null;
+        }
+
+        $latitudeDelta = deg2rad((float) $targetLatitude - $originLatitude);
+        $longitudeDelta = deg2rad((float) $targetLongitude - $originLongitude);
+        $originLatitudeRadians = deg2rad($originLatitude);
+        $targetLatitudeRadians = deg2rad((float) $targetLatitude);
+
+        $a = sin($latitudeDelta / 2) ** 2
+            + cos($originLatitudeRadians)
+            * cos($targetLatitudeRadians)
+            * sin($longitudeDelta / 2) ** 2;
+
+        $c = 2 * atan2(sqrt($a), sqrt(max(0, 1 - $a)));
+
+        return self::EARTH_RADIUS_MILES * $c;
     }
 
     private function ensureCanInvite(User $user, MahjMatch $match): void
