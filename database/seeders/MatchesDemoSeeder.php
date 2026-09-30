@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\MahjMatch;
+use App\Models\Sport;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -32,10 +33,12 @@ class MatchesDemoSeeder extends Seeder
             return [$profile['email'] => $user];
         });
 
+        $sports = Sport::query()->get()->keyBy('slug');
+
         $definitions = [
             [
                 'host' => 'demo.austen@mahj.test',
-                'name' => 'Basketball',
+                'sport_slug' => 'basketball',
                 'venue_name' => 'Central Park View',
                 'location_address' => 'Central Park, New York, NY',
                 'starts_at' => now()->addDay()->setTime(18, 0),
@@ -45,7 +48,7 @@ class MatchesDemoSeeder extends Seeder
             ],
             [
                 'host' => 'demo.alex@mahj.test',
-                'name' => 'Football',
+                'sport_slug' => 'american-football',
                 'venue_name' => 'Riverside Court',
                 'location_address' => 'Riverside Park, New York, NY',
                 'starts_at' => now()->addDay()->setTime(19, 30),
@@ -58,7 +61,7 @@ class MatchesDemoSeeder extends Seeder
             ],
             [
                 'host' => 'demo.jenny@mahj.test',
-                'name' => 'Tennis',
+                'sport_slug' => 'tennis',
                 'venue_name' => 'Downtown Sports Center',
                 'location_address' => 'Downtown, New York, NY',
                 'starts_at' => now()->addDays(2)->setTime(17, 30),
@@ -72,7 +75,7 @@ class MatchesDemoSeeder extends Seeder
             ],
             [
                 'host' => 'demo.daniel@mahj.test',
-                'name' => 'Basketball',
+                'sport_slug' => 'basketball',
                 'venue_name' => 'Sunset Community Court',
                 'location_address' => 'West Side, New York, NY',
                 'starts_at' => now()->addDays(2)->setTime(20, 0),
@@ -87,7 +90,7 @@ class MatchesDemoSeeder extends Seeder
             ],
             [
                 'host' => 'demo.sophia@mahj.test',
-                'name' => 'Football',
+                'sport_slug' => 'soccer',
                 'venue_name' => 'East Side Courts',
                 'location_address' => 'East Side, New York, NY',
                 'starts_at' => now()->addDays(3)->setTime(18, 30),
@@ -104,13 +107,18 @@ class MatchesDemoSeeder extends Seeder
             /** @var User $host */
             $host = $users->get($definition['host']);
 
+            /** @var Sport $sport */
+            $sport = $sports->get($definition['sport_slug']);
+
             $match = MahjMatch::query()->updateOrCreate(
                 [
                     'host_user_id' => $host->id,
                     'venue_name' => $definition['venue_name'],
                 ],
                 [
-                    'name' => $definition['name'],
+                    'name' => $sport->name,
+                    'sport_id' => $sport->id,
+                    'custom_sport_name' => null,
                     'location_address' => $definition['location_address'],
                     'starts_at' => $definition['starts_at'],
                     'is_public' => true,
