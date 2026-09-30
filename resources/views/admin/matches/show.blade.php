@@ -15,6 +15,7 @@
                 <div class="meta-row"><span>Starts</span><b>{{ $match->starts_at->format('M j, Y · g:i A') }}</b></div>
                 <div class="meta-row"><span>Players</span><b>{{ $match->players_count }}/{{ $match->max_players }}</b></div>
                 <div class="meta-row"><span>Visibility</span><b>{{ $match->is_invite_only ? 'Invite only' : ($match->is_public ? 'Public' : 'Private') }}</b></div>
+                <div class="meta-row"><span>Featured</span><b>{{ $match->is_featured ? 'Yes · order '.$match->featured_order : 'No' }}</b></div>
             </div>
         </div>
     </div>
@@ -59,6 +60,15 @@
                     <div class="span2 switch-row">
                         <div><b>Invite only</b><span>Only invited players should be able to join.</span></div>
                         <input class="switch" type="checkbox" name="is_invite_only" value="1" @checked($match->is_invite_only)>
+                    </div>
+                    <div class="field switch-row">
+                        <div><b>Featured match</b><span>Show this match in the Home featured banner slider.</span></div>
+                        <input class="switch" type="checkbox" name="is_featured" value="1" @checked($match->is_featured)>
+                    </div>
+                    <div class="field">
+                        <label>Featured order</label>
+                        <input class="input" type="number" min="0" max="65535" name="featured_order" value="{{ old('featured_order',$match->featured_order) }}">
+                        <small>Lower numbers appear first in the banner slider.</small>
                     </div>
                     <div class="span2"><button class="btn" type="submit">Save match changes</button></div>
                 </div>
