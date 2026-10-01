@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
@@ -44,6 +45,20 @@ class User extends Authenticatable
             'is_admin' => 'boolean',
             'is_suspended' => 'boolean',
         ];
+    }
+
+    public function avatarUrl(string $baseUrl): ?string
+    {
+        $path = trim((string) $this->avatar_path);
+        if ($path === '') {
+            return null;
+        }
+
+        if (Str::startsWith($path, ['http://', 'https://'])) {
+            return $path;
+        }
+
+        return rtrim($baseUrl, '/').'/storage/'.ltrim($path, '/');
     }
 
     public function subscription(): HasOne
