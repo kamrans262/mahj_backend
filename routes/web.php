@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminCommunityController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminInvitationController;
 use App\Http\Controllers\AdminMatchController;
@@ -33,6 +34,10 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::get('/matches/{match}', [AdminMatchController::class, 'show'])->name('matches.show');
         Route::patch('/matches/{match}', [AdminMatchController::class, 'update'])->name('matches.update');
         Route::delete('/matches/{match}', [AdminMatchController::class, 'destroy'])->name('matches.delete');
+
+        Route::get('/chats', [AdminCommunityController::class, 'chats'])->name('chats');
+        Route::get('/reports', [AdminCommunityController::class, 'reports'])->name('reports');
+        Route::get('/blocks', [AdminCommunityController::class, 'blocks'])->name('blocks');
 
         Route::get('/subscriptions', [AdminController::class, 'subscriptions'])->name('subscriptions');
         Route::get('/subscriptions/users/{user}', [AdminController::class, 'subscriptionUser'])
