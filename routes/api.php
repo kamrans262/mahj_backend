@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DeviceTokenController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\MatchChatController;
+use App\Http\Controllers\Api\MatchCompletionController;
 use App\Http\Controllers\Api\MatchController;
 use App\Http\Controllers\Api\MatchInvitationController;
 use App\Http\Controllers\Api\NotificationController;
@@ -62,6 +63,9 @@ Route::middleware(['auth:sanctum', 'account.active'])->group(function (): void {
     Route::post('/matches/{match}/join', [MatchController::class, 'join']);
     Route::post('/matches/{match}/leave', [MatchController::class, 'leave']);
     Route::post('/matches/{match}/cancel', [MatchController::class, 'cancel']);
+    Route::get('/matches/{match}/completion', [MatchCompletionController::class, 'show']);
+    Route::post('/matches/{match}/complete', [MatchCompletionController::class, 'complete']);
+    Route::post('/matches/{match}/scores', [MatchCompletionController::class, 'submitScores']);
     Route::get('/matches/{match}/chat', [MatchChatController::class, 'index']);
     Route::post('/matches/{match}/chat/messages', [MatchChatController::class, 'send']);
     Route::get('/matches/{match}/invite-candidates', [MatchInvitationController::class, 'candidates']);
