@@ -13,6 +13,10 @@
             <div class="meta">
                 <div class="meta-row"><span>Host</span><b>{{ $match->host->name }} · {{ $match->host->email }}</b></div>
                 <div class="meta-row"><span>Starts</span><b>{{ $match->starts_at->format('M j, Y · g:i A') }}</b></div>
+                @if($match->status === 'completed')
+                    <div class="meta-row"><span>Completed</span><b>{{ $match->completed_at?->format('M j, Y · g:i A') ?? 'Not recorded' }}</b></div>
+                    <div class="meta-row"><span>Score state</span><b>{{ $match->scores->isNotEmpty() ? 'Submitted' : 'Awaiting scores' }}</b></div>
+                @endif
                 <div class="meta-row"><span>Players</span><b>{{ $match->players_count }}/{{ $match->max_players }}</b></div>
                 <div class="meta-row"><span>Visibility</span><b>{{ $match->is_invite_only ? 'Invite only' : ($match->is_public ? 'Public' : 'Private') }}</b></div>
                 <div class="meta-row"><span>Coordinates</span><b>{{ $match->latitude !== null && $match->longitude !== null ? $match->latitude.', '.$match->longitude : 'Not set' }}</b></div>
@@ -103,6 +107,51 @@
         </div>
     </div>
 </div>
+
+@if($match->status === 'completed')
+<div class="card" style="margin-top:18px">
+    <div class="card-pad">
+        <div class="card-head">
+            <div>
+                <div class="card-title">Final Scores</div>
+                <div class="card-copy">
+                    {{ $match->scores->isNotEmpty()
+                        ? 'Scores submitted for this completed match.'
+                        : 'This match is complete, but scores have not been submitted yet.' }}
+                </div>
+            </div>
+            @if($match->scores->isNotEmpty())
+                <span class="badge success">Submitted</span>
+            @else
+                <span class="badge warning">Awaiting scores</span>
+            @endif
+        </div>
+
+        <div class="table-wrap">
+            <table class="table">
+                <thead><tr><th>Player</th><th>Role</th><th>Score</th><th>Submitted by</th><th>Submitted</th></tr></thead>
+                <tbody>
+                @forelse($match->players as $player)
+                    @php($score = $match->scores->firstWhere('player_user_id', $player->id))
+                    <tr>
+                        <td>
+                            <b>{{ $player->name }}</b>
+                            <div style="color:#667085;font-size:10px;margin-top:3px">{{ $player->email }}</div>
+                        </td>
+                        <td>{{ $player->id === $match->host_user_id ? 'Host' : 'Player' }}</td>
+                        <td><b>{{ $score?->score ?? '—' }}</b></td>
+                        <td>{{ $score?->submittedBy?->name ?? '—' }}</td>
+                        <td>{{ $score?->created_at?->format('M j, Y · g:i A') ?? '—' }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="5" class="empty">No players are attached to this match.</td></tr>
+                @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+@endif
 
 <div class="card" style="margin-top:18px">
     <div class="card-pad">
