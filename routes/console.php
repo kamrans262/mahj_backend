@@ -2,6 +2,7 @@
 
 use App\Models\MahjMatch;
 use App\Models\User;
+use App\Services\MahjNotificationService;
 use App\Services\MatchChatService;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
@@ -36,6 +37,7 @@ Artisan::command('mahj:admin {email} {--name=Mahj Admin}', function (): int {
 
 Artisan::command('mahj:chat-reminders', function (): int {
     $chat = app(MatchChatService::class);
+    $notifications = app(MahjNotificationService::class);
     $start = now()->addMinutes(55);
     $end = now()->addMinutes(65);
 
@@ -47,6 +49,7 @@ Artisan::command('mahj:chat-reminders', function (): int {
 
     foreach ($matches as $match) {
         $chat->gameReminder($match);
+        $notifications->gameReminder($match);
     }
 
     $this->info('Chat reminders checked for '.$matches->count().' match(es).');
