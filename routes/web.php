@@ -5,6 +5,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminInvitationController;
 use App\Http\Controllers\AdminMatchController;
 use App\Http\Controllers\AdminSportController;
+use App\Http\Controllers\AdminSupportContentController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/admin');
@@ -41,6 +42,14 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::get('/reports', [AdminCommunityController::class, 'reports'])->name('reports');
         Route::patch('/reports/{report}', [AdminCommunityController::class, 'updateReport'])->name('reports.update');
         Route::get('/blocks', [AdminCommunityController::class, 'blocks'])->name('blocks');
+        Route::get('/support-requests', [AdminSupportContentController::class, 'supportRequests'])->name('support.requests');
+        Route::patch('/support-requests/{supportRequest}', [AdminSupportContentController::class, 'updateSupportRequest'])->name('support.requests.update');
+        Route::get('/content', [AdminSupportContentController::class, 'content'])->name('content');
+        Route::post('/content/faqs', [AdminSupportContentController::class, 'storeFaq'])->name('content.faqs.store');
+        Route::patch('/content/faqs/{faq}', [AdminSupportContentController::class, 'updateFaq'])->name('content.faqs.update');
+        Route::delete('/content/faqs/{faq}', [AdminSupportContentController::class, 'deleteFaq'])->name('content.faqs.delete');
+        Route::patch('/content/pages/{page}', [AdminSupportContentController::class, 'updatePage'])->name('content.pages.update');
+        Route::patch('/content/support-settings', [AdminSupportContentController::class, 'updateSupportSettings'])->name('content.support.update');
 
         Route::get('/subscriptions', [AdminController::class, 'subscriptions'])->name('subscriptions');
         Route::get('/subscriptions/users/{user}', [AdminController::class, 'subscriptionUser'])
