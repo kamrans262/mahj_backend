@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\MatchChatMessage;
 use App\Models\UserBlock;
+use App\Models\UserDeviceToken;
+use App\Models\UserNotification;
 use App\Models\UserReport;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -43,6 +45,63 @@ class AdminCommunityController extends Controller
             'playerMessages' => MatchChatMessage::query()->where('type', 'message')->count(),
             'systemMessages' => MatchChatMessage::query()->where('type', 'system')->count(),
             'activeChats' => MatchChatMessage::query()->distinct('match_id')->count('match_id'),
+        ]);
+    }
+
+    public function notifications(Request $request): View
+    {
+        $search = trim((string) $request->query('search'));
+        $type = trim((string) $request->query('type'));
+        $status = trim((string) $request->query('status'));
+
+        $types = UserNotification::query()
+            ->select('type')
+            ->distinct()
+            ->orderBy('type')
+            ->pluck('type');
+
+        $notifications = UserNotification::query()
+            ->with(['user', 'relatedMatch', 'relatedUser'])
+            ->when($search !== '', fn ($query) => $query->where(function ($query) use ($search): void {
+                $query->where('title', 'like', "%{$search}%")
+                    ->orWhere('message', 'like', "%{$search}%")
+                    ->orWhereHas('user', fn ($query) => $query
+                        ->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%"))
+                    ->orWhereHas('relatedUser', fn ($query) => $query
+                        ->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%"))
+                    ->orWhereHas('relatedMatch', fn ($query) => $query
+                        ->where('name', 'like', "%{$search}%")
+                        ->orWhere('venue_name', 'like', "%{$search}%")
+                        ->orWhere('location_address', 'like', "%{$search}%"));
+            }))
+            ->when(
+                $type !== '' && $types->contains($type),
+                fn ($query) => $query->where('type', $type),
+            )
+            ->when(
+                $status === 'unread',
+                fn ($query) => $query->whereNull('read_at'),
+            )
+            ->when(
+                $status === 'read',
+                fn ($query) => $query->whereNotNull('read_at'),
+            )
+            ->latest('id')
+            ->limit(200)
+            ->get();
+
+        return view('admin.community.notifications', [
+            'notifications' => $notifications,
+            'types' => $types,
+            'search' => $search,
+            'type' => $type,
+            'status' => $status,
+            'totalNotifications' => UserNotification::query()->count(),
+            'unreadNotifications' => UserNotification::query()->whereNull('read_at')->count(),
+            'readNotifications' => UserNotification::query()->whereNotNull('read_at')->count(),
+            'registeredDevices' => UserDeviceToken::query()->count(),
         ]);
     }
 
