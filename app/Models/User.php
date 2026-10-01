@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
@@ -46,6 +47,20 @@ class User extends Authenticatable
         ];
     }
 
+    public function avatarUrl(string $baseUrl): ?string
+    {
+        $path = trim((string) $this->avatar_path);
+        if ($path === '') {
+            return null;
+        }
+
+        if (Str::startsWith($path, ['http://', 'https://'])) {
+            return $path;
+        }
+
+        return rtrim($baseUrl, '/').'/storage/'.ltrim($path, '/');
+    }
+
     public function subscription(): HasOne
     {
         return $this->hasOne(UserSubscription::class);
@@ -71,5 +86,30 @@ class User extends Authenticatable
     public function receivedMatchInvitations(): HasMany
     {
         return $this->hasMany(MatchInvitation::class, 'invitee_user_id');
+    }
+
+    public function matchChatMessages(): HasMany
+    {
+        return $this->hasMany(MatchChatMessage::class, 'sender_user_id');
+    }
+
+    public function submittedUserReports(): HasMany
+    {
+        return $this->hasMany(UserReport::class, 'reporter_user_id');
+    }
+
+    public function receivedUserReports(): HasMany
+    {
+        return $this->hasMany(UserReport::class, 'reported_user_id');
+    }
+
+    public function blockedUsers(): HasMany
+    {
+        return $this->hasMany(UserBlock::class, 'blocker_user_id');
+    }
+
+    public function blockedByUsers(): HasMany
+    {
+        return $this->hasMany(UserBlock::class, 'blocked_user_id');
     }
 }

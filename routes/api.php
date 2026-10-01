@@ -3,12 +3,14 @@
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\LocationController;
+use App\Http\Controllers\Api\MatchChatController;
 use App\Http\Controllers\Api\MatchController;
 use App\Http\Controllers\Api\MatchInvitationController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\SportController;
 use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\StripeWebhookController;
+use App\Http\Controllers\Api\UserModerationController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/stripe/webhook', StripeWebhookController::class);
@@ -54,11 +56,17 @@ Route::middleware(['auth:sanctum', 'account.active'])->group(function (): void {
     Route::get('/my-matches', [MatchInvitationController::class, 'myMatches']);
     Route::post('/matches', [MatchController::class, 'store']);
     Route::get('/matches/{match}', [MatchController::class, 'show']);
+    Route::put('/matches/{match}/schedule', [MatchController::class, 'updateSchedule']);
     Route::post('/matches/{match}/join', [MatchController::class, 'join']);
     Route::post('/matches/{match}/leave', [MatchController::class, 'leave']);
     Route::post('/matches/{match}/cancel', [MatchController::class, 'cancel']);
+    Route::get('/matches/{match}/chat', [MatchChatController::class, 'index']);
+    Route::post('/matches/{match}/chat/messages', [MatchChatController::class, 'send']);
     Route::get('/matches/{match}/invite-candidates', [MatchInvitationController::class, 'candidates']);
     Route::post('/matches/{match}/invitations', [MatchInvitationController::class, 'send']);
     Route::post('/invitations/{invitation}/accept', [MatchInvitationController::class, 'accept']);
     Route::post('/invitations/{invitation}/decline', [MatchInvitationController::class, 'decline']);
+
+    Route::post('/users/{user}/report', [UserModerationController::class, 'report']);
+    Route::post('/users/{user}/block', [UserModerationController::class, 'block']);
 });

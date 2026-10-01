@@ -7,6 +7,8 @@ use App\Http\Resources\MatchResource;
 use App\Models\MahjMatch;
 use App\Models\MatchInvitation;
 use App\Models\User;
+use App\Models\UserBlock;
+use App\Services\MatchChatService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,6 +17,10 @@ use Illuminate\Validation\ValidationException;
 
 class MatchInvitationController extends Controller
 {
+    public function __construct(private readonly MatchChatService $chat)
+    {
+    }
+
     private const EARTH_RADIUS_MILES = 3958.7613;
 
     public function myMatches(Request $request): JsonResponse
@@ -41,6 +47,10 @@ class MatchInvitationController extends Controller
             ->with(['host', 'players', 'sport'])
             ->withCount('players')
             ->where('host_user_id', '!=', $user->id)
+            ->whereDoesntHave(
+                'host.blockedUsers',
+                fn (Builder $query): Builder => $query->where('blocked_user_id', $user->id),
+            )
             ->whereHas('players', fn (Builder $query): Builder => $query->whereKey($user->id))
             ->where('starts_at', '>=', now()->subHours(3))
             ->where('status', '!=', 'completed')
@@ -63,9 +73,16 @@ class MatchInvitationController extends Controller
             ])
             ->where('invitee_user_id', $user->id)
             ->where('status', 'pending')
-            ->whereHas('match', function (Builder $query): void {
+            ->whereHas('match', function (Builder $query) use ($user): void {
                 $query->whereNotIn('status', ['cancelled', 'completed'])
-                    ->where('starts_at', '>=', now()->subHours(3));
+                    ->where('starts_at', '>=', now()->subHours(3))
+                    ->whereDoesntHave(
+                        'host.blockedUsers',
+                        fn (Builder $query): Builder => $query->where(
+                            'blocked_user_id',
+                            $user->id,
+                        ),
+                    );
             })
             ->latest()
             ->simplePaginate($perPage, ['*'], 'invites_page', $invitesPage);
@@ -100,11 +117,9 @@ class MatchInvitationController extends Controller
                 $match->setAttribute('players_count', $match->players->count());
                 $applyDistance($match);
 
-                $avatarUrl = $invitation->inviter?->avatar_path
-                    ? rtrim($request->getSchemeAndHttpHost(), '/')
-                        .'/storage/'
-                        .ltrim($invitation->inviter->avatar_path, '/')
-                    : null;
+                $avatarUrl = $invitation->inviter?->avatarUrl(
+                    $request->getSchemeAndHttpHost(),
+                );
 
                 return [
                     'id' => (string) $invitation->id,
@@ -169,6 +184,13 @@ class MatchInvitationController extends Controller
             ->where('id', '!=', $match->host_user_id)
             ->where('id', '!=', $user->id)
             ->where('is_suspended', false)
+            ->whereDoesntHave(
+                'blockedByUsers',
+                fn (Builder $query): Builder => $query->where(
+                    'blocker_user_id',
+                    $match->host_user_id,
+                ),
+            )
             ->whereNotIn('id', $excludedPlayerIds)
             ->whereNotIn('id', $excludedInvitationIds)
             ->when($search !== '', function (Builder $query) use ($search): void {
@@ -192,11 +214,9 @@ class MatchInvitationController extends Controller
                 'email' => $user->email,
                 'city' => $user->city,
                 'state' => $user->state,
-                'avatar_url' => $user->avatar_path
-                    ? rtrim($request->getSchemeAndHttpHost(), '/')
-                        .'/storage/'
-                        .ltrim($user->avatar_path, '/')
-                    : null,
+                'avatar_url' => $user->avatarUrl(
+                    $request->getSchemeAndHttpHost(),
+                ),
             ])->values(),
         ]);
     }
@@ -230,6 +250,17 @@ class MatchInvitationController extends Controller
         if ($existingPlayerIds->isNotEmpty()) {
             throw ValidationException::withMessages([
                 'user_ids' => ['One or more selected users are already in this match.'],
+            ]);
+        }
+
+        $blockedInviteeExists = UserBlock::query()
+            ->where('blocker_user_id', $match->host_user_id)
+            ->whereIn('blocked_user_id', $userIds)
+            ->exists();
+
+        if ($blockedInviteeExists) {
+            throw ValidationException::withMessages([
+                'user_ids' => ['One or more selected users cannot be invited to this match.'],
             ]);
         }
 
@@ -283,6 +314,17 @@ class MatchInvitationController extends Controller
                 ]);
             }
 
+            $blockedByHost = UserBlock::query()
+                ->where('blocker_user_id', $match->host_user_id)
+                ->where('blocked_user_id', $user->id)
+                ->exists();
+
+            if ($blockedByHost) {
+                throw ValidationException::withMessages([
+                    'invitation' => ['This invitation is no longer available.'],
+                ]);
+            }
+
             if ($match->status !== 'open') {
                 throw ValidationException::withMessages([
                     'match' => ['This match is no longer open for joining.'],
@@ -306,6 +348,7 @@ class MatchInvitationController extends Controller
             }
 
             $match->players()->attach($user->id, ['joined_at' => now()]);
+            $this->chat->playerJoined($match, $user);
             $count++;
 
             $lockedInvitation->update([
@@ -315,6 +358,7 @@ class MatchInvitationController extends Controller
 
             if ($count >= $match->max_players) {
                 $match->update(['status' => 'confirmed']);
+                $this->chat->matchConfirmed($match);
             }
 
             return $match;

@@ -18,6 +18,8 @@ class DemoDataSeeder extends Seeder
             SportsCatalogSeeder::class,
             MatchesDemoSeeder::class,
             M5InvitationsDemoSeeder::class,
+            DemoUserAvatarsSeeder::class,
+            M6ChatDemoSeeder::class,
         ]);
     }
 }

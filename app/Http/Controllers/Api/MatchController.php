@@ -7,9 +7,12 @@ use App\Http\Resources\MatchResource;
 use App\Models\MahjMatch;
 use App\Models\Sport;
 use App\Models\User;
+use App\Models\UserBlock;
+use App\Services\MatchChatService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -17,6 +20,10 @@ use Illuminate\Validation\ValidationException;
 
 class MatchController extends Controller
 {
+    public function __construct(private readonly MatchChatService $chat)
+    {
+    }
+
     private const MAX_DISCOVERY_ROWS = 250;
     private const MAX_RESPONSE_ROWS = 100;
     private const EARTH_RADIUS_MILES = 3958.7613;
@@ -42,7 +49,11 @@ class MatchController extends Controller
             ->with(['host', 'players', 'sport'])
             ->withCount('players')
             ->whereIn('status', ['open', 'confirmed'])
-            ->where('starts_at', '>=', now()->subHours(3));
+            ->where('starts_at', '>=', now()->subHours(3))
+            ->whereDoesntHave(
+                'host.blockedUsers',
+                fn (Builder $query): Builder => $query->where('blocked_user_id', $user->id),
+            );
 
         if ($request->boolean('discover_only')) {
             $query
@@ -235,6 +246,45 @@ class MatchController extends Controller
         ], 201);
     }
 
+    public function updateSchedule(Request $request, MahjMatch $match): JsonResponse
+    {
+        $validated = $request->validate([
+            'starts_at' => ['required', 'date', 'after:now'],
+        ]);
+
+        /** @var User $user */
+        $user = $request->user();
+
+        $match = DB::transaction(function () use ($match, $user, $validated): MahjMatch {
+            /** @var MahjMatch $locked */
+            $locked = MahjMatch::query()->lockForUpdate()->findOrFail($match->id);
+
+            if ($locked->host_user_id !== $user->id) {
+                abort(403, 'Only the host can change the match schedule.');
+            }
+
+            if (in_array($locked->status, ['cancelled', 'completed'], true)) {
+                throw ValidationException::withMessages([
+                    'match' => ['A closed match schedule cannot be changed.'],
+                ]);
+            }
+
+            $startsAt = Carbon::parse((string) $validated['starts_at']);
+
+            if (! $locked->starts_at?->equalTo($startsAt)) {
+                $locked->update(['starts_at' => $startsAt]);
+                $this->chat->scheduleChanged($locked);
+            }
+
+            return $locked;
+        });
+
+        return response()->json([
+            'message' => 'Match schedule updated.',
+            'match' => $this->resource($request, $match),
+        ]);
+    }
+
     public function join(Request $request, MahjMatch $match): JsonResponse
     {
         /** @var User $user */
@@ -249,6 +299,8 @@ class MatchController extends Controller
                     'match' => ['You are already the host of this match.'],
                 ]);
             }
+
+            $this->ensureHostAllowsUser($user, $locked);
 
             if ($locked->players()->whereKey($user->id)->exists()) {
                 return $locked;
@@ -274,10 +326,12 @@ class MatchController extends Controller
             }
 
             $locked->players()->attach($user->id, ['joined_at' => now()]);
+            $this->chat->playerJoined($locked, $user);
             $count++;
 
             if ($count >= $locked->max_players) {
                 $locked->update(['status' => 'confirmed']);
+                $this->chat->matchConfirmed($locked);
             }
 
             return $locked;
@@ -317,6 +371,7 @@ class MatchController extends Controller
             }
 
             $locked->players()->detach($user->id);
+            $this->chat->playerLeft($locked, $user);
             $count = $locked->players()->count();
 
             if ($locked->status === 'confirmed' && $count < $locked->max_players) {
@@ -337,22 +392,30 @@ class MatchController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        if ($match->host_user_id !== $user->id) {
-            abort(403, 'Only the host can cancel this match.');
-        }
+        $match = DB::transaction(function () use ($match, $user): MahjMatch {
+            /** @var MahjMatch $locked */
+            $locked = MahjMatch::query()->lockForUpdate()->findOrFail($match->id);
 
-        if ($match->status === 'completed') {
-            throw ValidationException::withMessages([
-                'match' => ['A completed match cannot be cancelled.'],
-            ]);
-        }
+            if ($locked->host_user_id !== $user->id) {
+                abort(403, 'Only the host can cancel this match.');
+            }
 
-        if ($match->status !== 'cancelled') {
-            $match->update([
-                'status' => 'cancelled',
-                'cancelled_at' => now(),
-            ]);
-        }
+            if ($locked->status === 'completed') {
+                throw ValidationException::withMessages([
+                    'match' => ['A completed match cannot be cancelled.'],
+                ]);
+            }
+
+            if ($locked->status !== 'cancelled') {
+                $locked->update([
+                    'status' => 'cancelled',
+                    'cancelled_at' => now(),
+                ]);
+                $this->chat->matchCancelled($locked);
+            }
+
+            return $locked;
+        });
 
         return response()->json([
             'message' => 'Match cancelled.',
@@ -422,6 +485,8 @@ class MatchController extends Controller
 
     private function ensureVisible(User $user, MahjMatch $match): void
     {
+        $this->ensureHostAllowsUser($user, $match);
+
         if ($match->is_public && ! $match->is_invite_only) {
             return;
         }
@@ -442,6 +507,22 @@ class MatchController extends Controller
         }
 
         abort(403, 'This match is private.');
+    }
+
+    private function ensureHostAllowsUser(User $user, MahjMatch $match): void
+    {
+        if ($match->host_user_id === $user->id) {
+            return;
+        }
+
+        $blocked = UserBlock::query()
+            ->where('blocker_user_id', $match->host_user_id)
+            ->where('blocked_user_id', $user->id)
+            ->exists();
+
+        if ($blocked) {
+            abort(404, 'Match not found.');
+        }
     }
 
     private function resource(Request $request, MahjMatch $match): array
