@@ -87,6 +87,38 @@ class MatchCompletionTest extends TestCase
         $this->assertDatabaseCount('match_scores', 3);
     }
 
+    public function test_only_match_participants_can_view_or_submit_completed_scores(): void
+    {
+        $host = User::factory()->create();
+        $player = User::factory()->create();
+        $outsider = User::factory()->create();
+        $match = $this->createMatch(
+            $host,
+            startsAt: now()->subHours(2),
+            status: 'completed',
+        );
+        $match->players()->attach($player->id, ['joined_at' => now()->subHours(3)]);
+
+        $this->actingAs($outsider, 'sanctum')
+            ->getJson("/api/matches/{$match->id}/completion")
+            ->assertForbidden();
+
+        $this->actingAs($outsider, 'sanctum')
+            ->postJson("/api/matches/{$match->id}/scores", [
+                'scores' => [
+                    ['player_id' => $host->id, 'score' => 10],
+                    ['player_id' => $player->id, 'score' => 8],
+                ],
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($player, 'sanctum')
+            ->getJson("/api/matches/{$match->id}/completion")
+            ->assertOk()
+            ->assertJsonPath('match.status', 'completed')
+            ->assertJsonPath('can_submit_scores', true);
+    }
+
     public function test_score_submission_requires_exact_completed_match_players(): void
     {
         $host = User::factory()->create();
