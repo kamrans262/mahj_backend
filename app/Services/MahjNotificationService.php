@@ -195,10 +195,8 @@ class MahjNotificationService
         );
     }
 
-    public function subscriptionUpdated(
-        UserSubscription $subscription,
-        string $eventId,
-    ): void {
+    public function subscriptionUpdated(UserSubscription $subscription): void
+    {
         $subscription->loadMissing(['user', 'plan']);
 
         if ($subscription->user === null) {
@@ -206,13 +204,21 @@ class MahjNotificationService
         }
 
         $status = str_replace('_', ' ', $subscription->status);
+        $fingerprint = sha1(implode('|', [
+            (string) $subscription->id,
+            (string) $subscription->subscription_plan_id,
+            (string) $subscription->status,
+            $subscription->cancel_at_period_end ? '1' : '0',
+            $subscription->trial_ends_at?->utc()->toISOString() ?? '',
+            $subscription->current_period_ends_at?->utc()->toISOString() ?? '',
+        ]));
 
         $this->send(
             recipient: $subscription->user,
             type: 'subscription_update',
             title: 'Subscription Update',
             message: 'Your '.($subscription->plan?->name ?? 'Mahj').' subscription is now '.$status.'.',
-            eventKey: 'subscription-update:'.$eventId,
+            eventKey: 'subscription-update:'.$fingerprint,
         );
     }
 
