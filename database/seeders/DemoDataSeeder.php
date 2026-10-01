@@ -22,6 +22,7 @@ class DemoDataSeeder extends Seeder
             M6ChatDemoSeeder::class,
             M7NotificationsDemoSeeder::class,
             M8CompletedMatchesDemoSeeder::class,
+            M9SafetyDemoSeeder::class,
         ]);
     }
 }

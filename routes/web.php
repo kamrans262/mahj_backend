@@ -39,6 +39,7 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::get('/chats', [AdminCommunityController::class, 'chats'])->name('chats');
         Route::get('/notifications', [AdminCommunityController::class, 'notifications'])->name('notifications');
         Route::get('/reports', [AdminCommunityController::class, 'reports'])->name('reports');
+        Route::patch('/reports/{report}', [AdminCommunityController::class, 'updateReport'])->name('reports.update');
         Route::get('/blocks', [AdminCommunityController::class, 'blocks'])->name('blocks');
 
         Route::get('/subscriptions', [AdminController::class, 'subscriptions'])->name('subscriptions');

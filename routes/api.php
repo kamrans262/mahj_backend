@@ -81,6 +81,8 @@ Route::middleware(['auth:sanctum', 'account.active'])->group(function (): void {
     Route::post('/device-tokens', [DeviceTokenController::class, 'store']);
     Route::delete('/device-tokens', [DeviceTokenController::class, 'destroy']);
 
+    Route::get('/safety', [UserModerationController::class, 'index']);
     Route::post('/users/{user}/report', [UserModerationController::class, 'report']);
     Route::post('/users/{user}/block', [UserModerationController::class, 'block']);
+    Route::delete('/users/{user}/block', [UserModerationController::class, 'unblock']);
 });
