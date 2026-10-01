@@ -38,10 +38,12 @@ class MatchChatService
 
     public function gameReminder(MahjMatch $match): MatchChatMessage
     {
+        $scheduleKey = $match->starts_at?->utc()->format('YmdHis') ?? 'unknown';
+
         return $this->system(
             $match,
             'Game reminder: the match starts in about 1 hour',
-            'game-reminder-60',
+            'game-reminder-60-'.$scheduleKey,
         );
     }
 
