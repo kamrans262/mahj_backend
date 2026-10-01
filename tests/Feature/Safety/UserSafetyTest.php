@@ -164,7 +164,7 @@ class UserSafetyTest extends TestCase
             ->assertOk();
 
         $this->assertFalse(
-            collect($response->json('matches'))->pluck('id')->contains((string) $match->id),
+            collect($response->json('data'))->pluck('id')->contains((string) $match->id),
         );
 
         $this->actingAs($blocked, 'sanctum')
