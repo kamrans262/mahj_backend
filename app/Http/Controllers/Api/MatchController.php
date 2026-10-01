@@ -11,6 +11,7 @@ use App\Services\MatchChatService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -238,6 +239,45 @@ class MatchController extends Controller
             'message' => 'Match created.',
             'match' => $this->resource($request, $match),
         ], 201);
+    }
+
+    public function updateSchedule(Request $request, MahjMatch $match): JsonResponse
+    {
+        $validated = $request->validate([
+            'starts_at' => ['required', 'date', 'after:now'],
+        ]);
+
+        /** @var User $user */
+        $user = $request->user();
+
+        $match = DB::transaction(function () use ($match, $user, $validated): MahjMatch {
+            /** @var MahjMatch $locked */
+            $locked = MahjMatch::query()->lockForUpdate()->findOrFail($match->id);
+
+            if ($locked->host_user_id !== $user->id) {
+                abort(403, 'Only the host can change the match schedule.');
+            }
+
+            if (in_array($locked->status, ['cancelled', 'completed'], true)) {
+                throw ValidationException::withMessages([
+                    'match' => ['A closed match schedule cannot be changed.'],
+                ]);
+            }
+
+            $startsAt = Carbon::parse((string) $validated['starts_at']);
+
+            if (! $locked->starts_at?->equalTo($startsAt)) {
+                $locked->update(['starts_at' => $startsAt]);
+                $this->chat->scheduleChanged($locked);
+            }
+
+            return $locked;
+        });
+
+        return response()->json([
+            'message' => 'Match schedule updated.',
+            'match' => $this->resource($request, $match),
+        ]);
     }
 
     public function join(Request $request, MahjMatch $match): JsonResponse
