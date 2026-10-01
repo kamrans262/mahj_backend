@@ -23,7 +23,7 @@ class UserResource extends JsonResource
             ),
             'email_verified_at' => $this->email_verified_at?->toISOString(),
             'upcoming_match_count' => 0,
-            'completed_match_count' => 0,
+            'completed_match_count' => $this->resource->joinedMatches()->where('status', 'completed')->count(),
             'unread_notification_count' => $this->resource->userNotifications()->whereNull('read_at')->count(),
             'unread_message_count' => 0,
             'google_connected' => false,
