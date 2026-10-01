@@ -77,4 +77,24 @@ class User extends Authenticatable
     {
         return $this->hasMany(MatchChatMessage::class, 'sender_user_id');
     }
+
+    public function submittedUserReports(): HasMany
+    {
+        return $this->hasMany(UserReport::class, 'reporter_user_id');
+    }
+
+    public function receivedUserReports(): HasMany
+    {
+        return $this->hasMany(UserReport::class, 'reported_user_id');
+    }
+
+    public function blockedUsers(): HasMany
+    {
+        return $this->hasMany(UserBlock::class, 'blocker_user_id');
+    }
+
+    public function blockedByUsers(): HasMany
+    {
+        return $this->hasMany(UserBlock::class, 'blocked_user_id');
+    }
 }
