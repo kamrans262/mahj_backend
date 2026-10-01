@@ -7,6 +7,7 @@ use App\Http\Resources\MatchResource;
 use App\Models\MahjMatch;
 use App\Models\MatchInvitation;
 use App\Models\User;
+use App\Models\UserBlock;
 use App\Services\MatchChatService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -46,6 +47,10 @@ class MatchInvitationController extends Controller
             ->with(['host', 'players', 'sport'])
             ->withCount('players')
             ->where('host_user_id', '!=', $user->id)
+            ->whereDoesntHave(
+                'host.blockedUsers',
+                fn (Builder $query): Builder => $query->where('blocked_user_id', $user->id),
+            )
             ->whereHas('players', fn (Builder $query): Builder => $query->whereKey($user->id))
             ->where('starts_at', '>=', now()->subHours(3))
             ->where('status', '!=', 'completed')
@@ -68,9 +73,16 @@ class MatchInvitationController extends Controller
             ])
             ->where('invitee_user_id', $user->id)
             ->where('status', 'pending')
-            ->whereHas('match', function (Builder $query): void {
+            ->whereHas('match', function (Builder $query) use ($user): void {
                 $query->whereNotIn('status', ['cancelled', 'completed'])
-                    ->where('starts_at', '>=', now()->subHours(3));
+                    ->where('starts_at', '>=', now()->subHours(3))
+                    ->whereDoesntHave(
+                        'host.blockedUsers',
+                        fn (Builder $query): Builder => $query->where(
+                            'blocked_user_id',
+                            $user->id,
+                        ),
+                    );
             })
             ->latest()
             ->simplePaginate($perPage, ['*'], 'invites_page', $invitesPage);
@@ -174,6 +186,13 @@ class MatchInvitationController extends Controller
             ->where('id', '!=', $match->host_user_id)
             ->where('id', '!=', $user->id)
             ->where('is_suspended', false)
+            ->whereDoesntHave(
+                'blockedByUsers',
+                fn (Builder $query): Builder => $query->where(
+                    'blocker_user_id',
+                    $match->host_user_id,
+                ),
+            )
             ->whereNotIn('id', $excludedPlayerIds)
             ->whereNotIn('id', $excludedInvitationIds)
             ->when($search !== '', function (Builder $query) use ($search): void {
@@ -238,6 +257,17 @@ class MatchInvitationController extends Controller
             ]);
         }
 
+        $blockedInviteeExists = UserBlock::query()
+            ->where('blocker_user_id', $match->host_user_id)
+            ->whereIn('blocked_user_id', $userIds)
+            ->exists();
+
+        if ($blockedInviteeExists) {
+            throw ValidationException::withMessages([
+                'user_ids' => ['One or more selected users cannot be invited to this match.'],
+            ]);
+        }
+
         DB::transaction(function () use ($match, $user, $userIds): void {
             foreach ($userIds as $inviteeId) {
                 MatchInvitation::query()->updateOrCreate(
@@ -283,6 +313,17 @@ class MatchInvitationController extends Controller
             }
 
             if ($lockedInvitation->status !== 'pending') {
+                throw ValidationException::withMessages([
+                    'invitation' => ['This invitation is no longer available.'],
+                ]);
+            }
+
+            $blockedByHost = UserBlock::query()
+                ->where('blocker_user_id', $match->host_user_id)
+                ->where('blocked_user_id', $user->id)
+                ->exists();
+
+            if ($blockedByHost) {
                 throw ValidationException::withMessages([
                     'invitation' => ['This invitation is no longer available.'],
                 ]);
