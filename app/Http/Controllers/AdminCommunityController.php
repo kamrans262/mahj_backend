@@ -7,7 +7,9 @@ use App\Models\UserBlock;
 use App\Models\UserDeviceToken;
 use App\Models\UserNotification;
 use App\Models\UserReport;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class AdminCommunityController extends Controller
@@ -108,6 +110,7 @@ class AdminCommunityController extends Controller
     public function reports(Request $request): View
     {
         $search = trim((string) $request->query('search'));
+        $status = trim((string) $request->query('status'));
 
         $reports = UserReport::query()
             ->with(['reporter', 'reportedUser'])
@@ -121,6 +124,10 @@ class AdminCommunityController extends Controller
                         ->where('name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%"));
             }))
+            ->when(
+                in_array($status, ['pending', 'closed'], true),
+                fn ($query) => $query->where('status', $status),
+            )
             ->latest('id')
             ->limit(100)
             ->get();
@@ -128,10 +135,29 @@ class AdminCommunityController extends Controller
         return view('admin.community.reports', [
             'reports' => $reports,
             'search' => $search,
+            'status' => $status,
             'totalReports' => UserReport::query()->count(),
             'pendingReports' => UserReport::query()->where('status', 'pending')->count(),
-            'reviewedReports' => UserReport::query()->whereNotNull('reviewed_at')->count(),
+            'closedReports' => UserReport::query()->where('status', 'closed')->count(),
         ]);
+    }
+
+    public function updateReport(Request $request, UserReport $report): RedirectResponse
+    {
+        $validated = $request->validate([
+            'status' => ['required', Rule::in(['pending', 'closed'])],
+        ]);
+
+        $status = $validated['status'];
+        $report->update([
+            'status' => $status,
+            'reviewed_at' => $status === 'closed' ? now() : null,
+        ]);
+
+        return back()->with(
+            'status',
+            $status === 'closed' ? 'Report closed.' : 'Report reopened.',
+        );
     }
 
     public function blocks(Request $request): View
