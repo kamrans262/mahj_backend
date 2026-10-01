@@ -4,8 +4,8 @@ use App\Models\MahjMatch;
 use App\Models\User;
 use App\Services\MatchChatService;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Str;
 
 Artisan::command('mahj:admin {email} {--name=Mahj Admin}', function (): int {
@@ -33,7 +33,6 @@ Artisan::command('mahj:admin {email} {--name=Mahj Admin}', function (): int {
 
     return 0;
 })->purpose('Create or update a Mahj admin account');
-
 
 Artisan::command('mahj:chat-reminders', function (): int {
     $chat = app(MatchChatService::class);
