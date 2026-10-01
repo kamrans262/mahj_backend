@@ -345,23 +345,30 @@ class MatchController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        if ($match->host_user_id !== $user->id) {
-            abort(403, 'Only the host can cancel this match.');
-        }
+        $match = DB::transaction(function () use ($match, $user): MahjMatch {
+            /** @var MahjMatch $locked */
+            $locked = MahjMatch::query()->lockForUpdate()->findOrFail($match->id);
 
-        if ($match->status === 'completed') {
-            throw ValidationException::withMessages([
-                'match' => ['A completed match cannot be cancelled.'],
-            ]);
-        }
+            if ($locked->host_user_id !== $user->id) {
+                abort(403, 'Only the host can cancel this match.');
+            }
 
-        if ($match->status !== 'cancelled') {
-            $match->update([
-                'status' => 'cancelled',
-                'cancelled_at' => now(),
-            ]);
-            $this->chat->matchCancelled($match);
-        }
+            if ($locked->status === 'completed') {
+                throw ValidationException::withMessages([
+                    'match' => ['A completed match cannot be cancelled.'],
+                ]);
+            }
+
+            if ($locked->status !== 'cancelled') {
+                $locked->update([
+                    'status' => 'cancelled',
+                    'cancelled_at' => now(),
+                ]);
+                $this->chat->matchCancelled($locked);
+            }
+
+            return $locked;
+        });
 
         return response()->json([
             'message' => 'Match cancelled.',
