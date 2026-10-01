@@ -34,7 +34,8 @@
         <nav class="nav">
             <a class="{{ request()->routeIs('admin.dashboard') ? 'active' : '' }}" href="{{ route('admin.dashboard') }}">Overview</a>
             <a class="{{ request()->routeIs('admin.users*') ? 'active' : '' }}" href="{{ route('admin.users') }}">Users</a>
-            <a class="{{ request()->routeIs('admin.matches*') ? 'active' : '' }}" href="{{ route('admin.matches') }}">Matches</a>
+            <a class="{{ request()->routeIs('admin.matches') || request()->routeIs('admin.matches.show') ? 'active' : '' }}" href="{{ route('admin.matches') }}">Matches</a>
+            <a class="{{ request()->routeIs('admin.matches.completed') ? 'active' : '' }}" href="{{ route('admin.matches.completed') }}">Completed & Scores</a>
             <a class="{{ request()->routeIs('admin.invitations*') ? 'active' : '' }}" href="{{ route('admin.invitations') }}">Invitations</a>
             <a class="{{ request()->routeIs('admin.chats*') ? 'active' : '' }}" href="{{ route('admin.chats') }}">Match Chats</a>
             <a class="{{ request()->routeIs('admin.notifications*') ? 'active' : '' }}" href="{{ route('admin.notifications') }}">Notifications</a>
