@@ -12,11 +12,14 @@ use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\SportController;
 use App\Http\Controllers\Api\SubscriptionController;
+use App\Http\Controllers\Api\SupportContentController;
 use App\Http\Controllers\Api\StripeWebhookController;
 use App\Http\Controllers\Api\UserModerationController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/stripe/webhook', StripeWebhookController::class);
+Route::get('/content/support', [SupportContentController::class, 'support']);
+Route::get('/content/legal', [SupportContentController::class, 'legal']);
 
 Route::prefix('auth')->group(function (): void {
     Route::post('/register/request-otp', [AuthController::class, 'requestRegistrationOtp'])
@@ -44,6 +47,7 @@ Route::middleware(['auth:sanctum', 'account.active'])->group(function (): void {
     Route::put('/account/email', [AccountController::class, 'changeEmail']);
     Route::put('/account/password', [AccountController::class, 'changePassword']);
     Route::delete('/account', [AccountController::class, 'destroy']);
+    Route::post('/support-requests', [SupportContentController::class, 'submit']);
 
     Route::get('/subscription', [SubscriptionController::class, 'show']);
     Route::post('/subscription/start-trial', [SubscriptionController::class, 'startTrial']);
