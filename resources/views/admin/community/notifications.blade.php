@@ -51,7 +51,7 @@
                     <td><span class="badge orange">{{ ucwords(str_replace('_', ' ', $notification->type)) }}</span></td>
                     <td style="max-width:430px;white-space:normal;line-height:1.5">
                         <b>{{ $notification->title }}</b>
-                        <div style="color:#667085;font-size:10px;margin-top:5px">{{ IlluminateSupportStr::limit($notification->message, 180) }}</div>
+                        <div style="color:#667085;font-size:10px;margin-top:5px">{{ mb_strimwidth($notification->message, 0, 180, '…') }}</div>
                     </td>
                     <td>
                         @if($notification->relatedMatch)
