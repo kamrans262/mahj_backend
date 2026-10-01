@@ -64,6 +64,7 @@ class MahjNotificationService
             match: $invitation->match,
             relatedUser: $invitation->inviter,
             eventKey: 'match-invite:'.$invitation->id,
+            data: ['invitation_id' => (string) $invitation->id],
         );
     }
 
