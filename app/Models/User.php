@@ -61,6 +61,16 @@ class User extends Authenticatable
         return rtrim($baseUrl, '/').'/storage/'.ltrim($path, '/');
     }
 
+    public function notificationPreference(): HasOne
+    {
+        return $this->hasOne(NotificationPreference::class);
+    }
+
+    public function userNotifications(): HasMany
+    {
+        return $this->hasMany(UserNotification::class);
+    }
+
     public function subscription(): HasOne
     {
         return $this->hasOne(UserSubscription::class);
