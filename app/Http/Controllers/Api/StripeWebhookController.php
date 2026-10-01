@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\UserSubscription;
+use App\Services\MahjNotificationService;
 use App\Services\StripeBillingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -11,8 +12,10 @@ use Throwable;
 
 class StripeWebhookController extends Controller
 {
-    public function __construct(private readonly StripeBillingService $stripe)
-    {
+    public function __construct(
+        private readonly StripeBillingService $stripe,
+        private readonly MahjNotificationService $notifications,
+    ) {
     }
 
     public function __invoke(Request $request): JsonResponse
@@ -30,7 +33,9 @@ class StripeWebhookController extends Controller
 
         try {
             $type = (string) ($event['type'] ?? '');
+            $eventId = (string) ($event['id'] ?? $type);
             $object = data_get($event, 'data.object');
+            $local = null;
 
             if (! is_array($object)) {
                 return response()->json(['received' => true]);
@@ -41,7 +46,7 @@ class StripeWebhookController extends Controller
                 'customer.subscription.updated',
                 'customer.subscription.deleted',
             ], true)) {
-                $this->stripe->syncRemoteSubscription($object);
+                $local = $this->stripe->syncRemoteSubscription($object);
             }
 
             if ($type === 'checkout.session.completed') {
@@ -49,7 +54,7 @@ class StripeWebhookController extends Controller
 
                 if ($subscriptionId !== null) {
                     $remote = $this->stripe->retrieveSubscription($subscriptionId);
-                    $this->stripe->syncRemoteSubscription($remote);
+                    $local = $this->stripe->syncRemoteSubscription($remote);
                 }
             }
 
@@ -62,8 +67,13 @@ class StripeWebhookController extends Controller
 
                     if ($type === 'invoice.payment_failed' && $local !== null) {
                         $local->update(['status' => 'past_due']);
+                        $local = $local->refresh();
                     }
                 }
+            }
+
+            if ($local !== null) {
+                $this->notifications->subscriptionUpdated($local, $eventId);
             }
         } catch (Throwable $error) {
             report($error);
