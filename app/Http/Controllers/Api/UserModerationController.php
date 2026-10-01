@@ -8,6 +8,7 @@ use App\Models\UserBlock;
 use App\Models\UserReport;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -34,6 +35,53 @@ class UserModerationController extends Controller
         'other',
     ];
 
+    public function index(Request $request): JsonResponse
+    {
+        /** @var User $currentUser */
+        $currentUser = $request->user();
+
+        $blocks = UserBlock::query()
+            ->where('blocker_user_id', $currentUser->id)
+            ->with([
+                'blockedUser' => fn ($query) => $query->withCount('joinedMatches'),
+            ])
+            ->latest('id')
+            ->limit(100)
+            ->get();
+
+        $reports = UserReport::query()
+            ->where('reporter_user_id', $currentUser->id)
+            ->with([
+                'reportedUser' => fn ($query) => $query->withCount('joinedMatches'),
+            ])
+            ->latest('id')
+            ->limit(100)
+            ->get();
+
+        return response()->json([
+            'blocked_users' => $blocks
+                ->filter(fn (UserBlock $block): bool => $block->blockedUser !== null)
+                ->map(fn (UserBlock $block): array => $this->userData(
+                    $request,
+                    $block->blockedUser,
+                ))
+                ->values(),
+            'report_history' => $reports
+                ->filter(fn (UserReport $report): bool => $report->reportedUser !== null)
+                ->map(fn (UserReport $report): array => [
+                    'id' => (string) $report->id,
+                    'status' => $report->status === 'closed' ? 'closed' : 'pending',
+                    'reason' => $report->reason,
+                    'created_at' => $report->created_at?->toISOString(),
+                    'reported_user' => $this->userData(
+                        $request,
+                        $report->reportedUser,
+                    ),
+                ])
+                ->values(),
+        ]);
+    }
+
     public function report(Request $request, User $user): JsonResponse
     {
         /** @var User $reporter */
@@ -45,7 +93,7 @@ class UserModerationController extends Controller
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        UserReport::query()->create([
+        $report = UserReport::query()->create([
             'reporter_user_id' => $reporter->id,
             'reported_user_id' => $user->id,
             'reason' => $validated['reason_id'],
@@ -57,6 +105,8 @@ class UserModerationController extends Controller
 
         return response()->json([
             'message' => 'Report submitted.',
+            'report_id' => (string) $report->id,
+            'status' => 'pending',
         ], 201);
     }
 
@@ -82,7 +132,36 @@ class UserModerationController extends Controller
 
         return response()->json([
             'message' => 'Player blocked.',
+            'blocked' => true,
         ]);
+    }
+
+    public function unblock(Request $request, User $user): JsonResponse
+    {
+        /** @var User $blocker */
+        $blocker = $request->user();
+        $this->ensureDifferentUsers($blocker, $user);
+
+        UserBlock::query()
+            ->where('blocker_user_id', $blocker->id)
+            ->where('blocked_user_id', $user->id)
+            ->delete();
+
+        return response()->json([
+            'message' => 'Player unblocked.',
+            'blocked' => false,
+        ]);
+    }
+
+    private function userData(Request $request, User $user): array
+    {
+        return [
+            'id' => (string) $user->id,
+            'name' => $user->name,
+            'username' => Str::before($user->email, '@'),
+            'avatar_url' => $user->avatarUrl($request->getSchemeAndHttpHost()),
+            'games_count' => (int) ($user->joined_matches_count ?? 0),
+        ];
     }
 
     private function ensureDifferentUsers(User $actor, User $target): void
