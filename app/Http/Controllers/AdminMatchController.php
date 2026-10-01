@@ -111,6 +111,9 @@ class AdminMatchController extends Controller
             'cancelled_at' => $validated['status'] === 'cancelled'
                 ? ($match->cancelled_at ?? now())
                 : null,
+            'completed_at' => $validated['status'] === 'completed'
+                ? ($match->completed_at ?? now())
+                : null,
         ]);
 
         return back()->with('status', 'Match updated.');
