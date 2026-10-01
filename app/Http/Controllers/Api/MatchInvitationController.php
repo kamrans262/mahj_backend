@@ -117,11 +117,9 @@ class MatchInvitationController extends Controller
                 $match->setAttribute('players_count', $match->players->count());
                 $applyDistance($match);
 
-                $avatarUrl = $invitation->inviter?->avatar_path
-                    ? rtrim($request->getSchemeAndHttpHost(), '/')
-                        .'/storage/'
-                        .ltrim($invitation->inviter->avatar_path, '/')
-                    : null;
+                $avatarUrl = $invitation->inviter?->avatarUrl(
+                    $request->getSchemeAndHttpHost(),
+                );
 
                 return [
                     'id' => (string) $invitation->id,
@@ -216,11 +214,9 @@ class MatchInvitationController extends Controller
                 'email' => $user->email,
                 'city' => $user->city,
                 'state' => $user->state,
-                'avatar_url' => $user->avatar_path
-                    ? rtrim($request->getSchemeAndHttpHost(), '/')
-                        .'/storage/'
-                        .ltrim($user->avatar_path, '/')
-                    : null,
+                'avatar_url' => $user->avatarUrl(
+                    $request->getSchemeAndHttpHost(),
+                ),
             ])->values(),
         ]);
     }
