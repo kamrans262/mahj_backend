@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\MahjMatch;
+use App\Models\MatchInvitation;
 use App\Models\NotificationPreference;
 use App\Models\User;
 use App\Services\MahjNotificationService;
@@ -66,7 +67,6 @@ class M7NotificationsDemoSeeder extends Seeder
         $definitions = [
             ['nearby_match', 'New Match Nearby', 'A new match is available near you.'],
             ['player_joined', 'Player Joined Your Game', 'A player joined your game.'],
-            ['match_invite', 'Game Invitation', 'You received a game invitation.'],
             ['match_confirmed', 'Game Confirmed', 'Your game is confirmed.'],
             ['match_cancelled', 'Game Cancelled', 'A game you joined was cancelled.'],
             ['schedule_changed', 'Schedule Changed', 'The game date or time changed.'],
@@ -76,10 +76,6 @@ class M7NotificationsDemoSeeder extends Seeder
         ];
 
         foreach ($definitions as [$type, $title, $message]) {
-            $data = $type === 'match_invite'
-                ? ['invitation_id' => null]
-                : [];
-
             $notifications->send(
                 recipient: $target,
                 type: $type,
@@ -88,8 +84,18 @@ class M7NotificationsDemoSeeder extends Seeder
                 match: $type === 'subscription_update' ? null : $match,
                 relatedUser: $other,
                 eventKey: $base.':'.$type,
-                data: $data,
             );
+        }
+
+        $pendingInvitation = MatchInvitation::query()
+            ->with(['invitee', 'inviter', 'match'])
+            ->where('invitee_user_id', $target->id)
+            ->where('status', 'pending')
+            ->latest('id')
+            ->first();
+
+        if ($pendingInvitation !== null) {
+            $notifications->matchInvitation($pendingInvitation);
         }
 
         $this->command?->info(
