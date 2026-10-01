@@ -20,20 +20,12 @@ class MatchChatService
 
     public function matchConfirmed(MahjMatch $match): MatchChatMessage
     {
-        return $this->system(
-            $match,
-            'Match confirmed',
-            'match-confirmed',
-        );
+        return $this->system($match, 'Match confirmed');
     }
 
     public function matchCancelled(MahjMatch $match): MatchChatMessage
     {
-        return $this->system(
-            $match,
-            'Match cancelled',
-            'match-cancelled',
-        );
+        return $this->system($match, 'Match cancelled');
     }
 
     public function scheduleChanged(MahjMatch $match): MatchChatMessage
