@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\DeviceTokenController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\MatchChatController;
 use App\Http\Controllers\Api\MatchController;
@@ -73,6 +74,8 @@ Route::middleware(['auth:sanctum', 'account.active'])->group(function (): void {
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
     Route::get('/notification-settings', [NotificationController::class, 'settings']);
     Route::put('/notification-settings', [NotificationController::class, 'updateSettings']);
+    Route::post('/device-tokens', [DeviceTokenController::class, 'store']);
+    Route::delete('/device-tokens', [DeviceTokenController::class, 'destroy']);
 
     Route::post('/users/{user}/report', [UserModerationController::class, 'report']);
     Route::post('/users/{user}/block', [UserModerationController::class, 'block']);
