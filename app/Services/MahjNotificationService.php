@@ -13,6 +13,11 @@ use Illuminate\Support\Collection;
 
 class MahjNotificationService
 {
+    public function __construct(
+        private readonly FirebasePushService $push,
+    ) {
+    }
+
     private const PREFERENCE_BY_TYPE = [
         'nearby_match' => 'new_games_nearby',
         'match_invite' => 'game_invitations',
@@ -246,20 +251,30 @@ class MahjNotificationService
         ];
 
         if ($eventKey !== null) {
-            return UserNotification::query()->firstOrCreate(
+            $notification = UserNotification::query()->firstOrCreate(
                 [
                     'user_id' => $recipient->id,
                     'event_key' => $eventKey,
                 ],
                 $values,
             );
+
+            if ($notification->wasRecentlyCreated) {
+                $this->push->send($recipient, $notification);
+            }
+
+            return $notification;
         }
 
-        return UserNotification::query()->create([
+        $notification = UserNotification::query()->create([
             'user_id' => $recipient->id,
             'event_key' => null,
             ...$values,
         ]);
+
+        $this->push->send($recipient, $notification);
+
+        return $notification;
     }
 
     private function preferenceEnabled(User $user, string $type): bool
