@@ -38,12 +38,16 @@ class MatchInvitationController extends Controller
             'upcoming_page' => ['nullable', 'integer', 'min:1'],
             'created_page' => ['nullable', 'integer', 'min:1'],
             'invites_page' => ['nullable', 'integer', 'min:1'],
+            'completed_page' => ['nullable', 'integer', 'min:1'],
+            'cancelled_page' => ['nullable', 'integer', 'min:1'],
         ]);
 
         $perPage = (int) ($validated['per_page'] ?? 20);
         $upcomingPage = (int) ($validated['upcoming_page'] ?? 1);
         $createdPage = (int) ($validated['created_page'] ?? 1);
         $invitesPage = (int) ($validated['invites_page'] ?? 1);
+        $completedPage = (int) ($validated['completed_page'] ?? 1);
+        $cancelledPage = (int) ($validated['cancelled_page'] ?? 1);
         $hasCoordinates = isset($validated['latitude'], $validated['longitude']);
 
         $upcomingPaginator = MahjMatch::query()
@@ -56,7 +60,7 @@ class MatchInvitationController extends Controller
             )
             ->whereHas('players', fn (Builder $query): Builder => $query->whereKey($user->id))
             ->where('starts_at', '>=', now()->subHours(3))
-            ->where('status', '!=', 'completed')
+            ->whereNotIn('status', ['cancelled', 'completed'])
             ->orderBy('starts_at')
             ->simplePaginate($perPage, ['*'], 'upcoming_page', $upcomingPage);
 
@@ -64,8 +68,39 @@ class MatchInvitationController extends Controller
             ->with(['host', 'players', 'sport'])
             ->withCount('players')
             ->where('host_user_id', $user->id)
+            ->whereNotIn('status', ['cancelled', 'completed'])
             ->orderByDesc('starts_at')
             ->simplePaginate($perPage, ['*'], 'created_page', $createdPage);
+
+        $completedPaginator = MahjMatch::query()
+            ->with(['host', 'players', 'sport'])
+            ->withCount('players')
+            ->where('status', 'completed')
+            ->where(function (Builder $query) use ($user): void {
+                $query->where('host_user_id', $user->id)
+                    ->orWhereHas('players', fn (Builder $query): Builder => $query->whereKey($user->id));
+            })
+            ->whereDoesntHave(
+                'host.blockedUsers',
+                fn (Builder $query): Builder => $query->where('blocked_user_id', $user->id),
+            )
+            ->orderByDesc('starts_at')
+            ->simplePaginate($perPage, ['*'], 'completed_page', $completedPage);
+
+        $cancelledPaginator = MahjMatch::query()
+            ->with(['host', 'players', 'sport'])
+            ->withCount('players')
+            ->where('status', 'cancelled')
+            ->where(function (Builder $query) use ($user): void {
+                $query->where('host_user_id', $user->id)
+                    ->orWhereHas('players', fn (Builder $query): Builder => $query->whereKey($user->id));
+            })
+            ->whereDoesntHave(
+                'host.blockedUsers',
+                fn (Builder $query): Builder => $query->where('blocked_user_id', $user->id),
+            )
+            ->orderByDesc('starts_at')
+            ->simplePaginate($perPage, ['*'], 'cancelled_page', $cancelledPage);
 
         $invitationsPaginator = MatchInvitation::query()
             ->with([
@@ -114,6 +149,12 @@ class MatchInvitationController extends Controller
         $created = collect($createdPaginator->items());
         $created->each($applyDistance);
 
+        $completed = collect($completedPaginator->items());
+        $completed->each($applyDistance);
+
+        $cancelled = collect($cancelledPaginator->items());
+        $cancelled->each($applyDistance);
+
         $inviteData = collect($invitationsPaginator->items())
             ->map(function (MatchInvitation $invitation) use ($request, $applyDistance): array {
                 $match = $invitation->match;
@@ -141,6 +182,8 @@ class MatchInvitationController extends Controller
             'upcoming' => MatchResource::collection($upcoming)->resolve($request),
             'created_by_me' => MatchResource::collection($created)->resolve($request),
             'invites' => $inviteData,
+            'completed' => MatchResource::collection($completed)->resolve($request),
+            'cancelled' => MatchResource::collection($cancelled)->resolve($request),
             'meta' => [
                 'per_page' => $perPage,
                 'upcoming' => [
@@ -154,6 +197,14 @@ class MatchInvitationController extends Controller
                 'invites' => [
                     'page' => $invitesPage,
                     'has_more' => $invitationsPaginator->hasMorePages(),
+                ],
+                'completed' => [
+                    'page' => $completedPage,
+                    'has_more' => $completedPaginator->hasMorePages(),
+                ],
+                'cancelled' => [
+                    'page' => $cancelledPage,
+                    'has_more' => $cancelledPaginator->hasMorePages(),
                 ],
             ],
         ]);

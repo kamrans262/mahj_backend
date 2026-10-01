@@ -32,6 +32,7 @@ class MahjMatch extends Model
         'latitude',
         'longitude',
         'cancelled_at',
+        'completed_at',
     ];
 
     protected function casts(): array
@@ -46,6 +47,7 @@ class MahjMatch extends Model
             'latitude' => 'float',
             'longitude' => 'float',
             'cancelled_at' => 'datetime',
+            'completed_at' => 'datetime',
         ];
     }
 
@@ -74,5 +76,10 @@ class MahjMatch extends Model
     public function chatMessages(): HasMany
     {
         return $this->hasMany(MatchChatMessage::class, 'match_id');
+    }
+
+    public function scores(): HasMany
+    {
+        return $this->hasMany(MatchScore::class, 'match_id');
     }
 }

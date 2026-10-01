@@ -52,6 +52,7 @@ class MatchResource extends JsonResource
             'current_players' => $currentPlayers,
             'max_players' => $this->max_players,
             'status' => $this->status,
+            'completed_at' => $this->completed_at?->toISOString(),
             'is_public' => $this->is_public,
             'is_invite_only' => $this->is_invite_only,
             'notes' => $this->notes,
@@ -87,6 +88,10 @@ class MatchResource extends JsonResource
                 && ! in_array($this->status, ['cancelled', 'completed'], true),
             'can_cancel' => $isHost
                 && ! in_array($this->status, ['cancelled', 'completed'], true),
+            'can_complete' => $isHost
+                && in_array($this->status, ['open', 'confirmed'], true)
+                && $this->starts_at !== null
+                && $this->starts_at->lte(now()),
         ];
     }
 }

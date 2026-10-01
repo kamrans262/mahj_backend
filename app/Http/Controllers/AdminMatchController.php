@@ -43,6 +43,52 @@ class AdminMatchController extends Controller
         ]);
     }
 
+    public function completed(Request $request): View
+    {
+        $search = trim((string) $request->query('search'));
+        $scoreState = trim((string) $request->query('scores'));
+
+        $matches = MahjMatch::query()
+            ->with(['host', 'sport'])
+            ->withCount(['players', 'scores'])
+            ->where('status', 'completed')
+            ->when($search !== '', fn ($query) => $query->where(function ($query) use ($search): void {
+                $query->where('name', 'like', "%{$search}%")
+                    ->orWhere('location_address', 'like', "%{$search}%")
+                    ->orWhere('venue_name', 'like', "%{$search}%")
+                    ->orWhereHas('host', fn ($query) => $query
+                        ->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%"));
+            }))
+            ->when(
+                $scoreState === 'submitted',
+                fn ($query) => $query->has('scores'),
+            )
+            ->when(
+                $scoreState === 'pending',
+                fn ($query) => $query->doesntHave('scores'),
+            )
+            ->orderByDesc('completed_at')
+            ->orderByDesc('id')
+            ->limit(100)
+            ->get();
+
+        return view('admin.matches.completed', [
+            'matches' => $matches,
+            'search' => $search,
+            'scoreState' => $scoreState,
+            'completedMatches' => MahjMatch::query()->where('status', 'completed')->count(),
+            'scoredMatches' => MahjMatch::query()
+                ->where('status', 'completed')
+                ->has('scores')
+                ->count(),
+            'pendingScoreMatches' => MahjMatch::query()
+                ->where('status', 'completed')
+                ->doesntHave('scores')
+                ->count(),
+        ]);
+    }
+
     public function show(MahjMatch $match): View
     {
         $match->load([
@@ -51,6 +97,8 @@ class AdminMatchController extends Controller
             'sport',
             'invitations.inviter',
             'invitations.invitee',
+            'scores.player',
+            'scores.submittedBy',
         ])->loadCount('players');
 
         return view('admin.matches.show', [
@@ -110,6 +158,9 @@ class AdminMatchController extends Controller
             'longitude' => $validated['longitude'] ?? null,
             'cancelled_at' => $validated['status'] === 'cancelled'
                 ? ($match->cancelled_at ?? now())
+                : null,
+            'completed_at' => $validated['status'] === 'completed'
+                ? ($match->completed_at ?? now())
                 : null,
         ]);
 
