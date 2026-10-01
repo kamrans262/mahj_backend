@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\MatchChatController;
 use App\Http\Controllers\Api\MatchController;
 use App\Http\Controllers\Api\MatchInvitationController;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\SportController;
 use App\Http\Controllers\Api\SubscriptionController;
@@ -66,6 +67,11 @@ Route::middleware(['auth:sanctum', 'account.active'])->group(function (): void {
     Route::post('/matches/{match}/invitations', [MatchInvitationController::class, 'send']);
     Route::post('/invitations/{invitation}/accept', [MatchInvitationController::class, 'accept']);
     Route::post('/invitations/{invitation}/decline', [MatchInvitationController::class, 'decline']);
+
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
+    Route::get('/notification-settings', [NotificationController::class, 'settings']);
+    Route::put('/notification-settings', [NotificationController::class, 'updateSettings']);
 
     Route::post('/users/{user}/report', [UserModerationController::class, 'report']);
     Route::post('/users/{user}/block', [UserModerationController::class, 'block']);
