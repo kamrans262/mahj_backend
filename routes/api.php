@@ -69,6 +69,7 @@ Route::middleware(['auth:sanctum', 'account.active'])->group(function (): void {
     Route::post('/invitations/{invitation}/decline', [MatchInvitationController::class, 'decline']);
 
     Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
     Route::get('/notification-settings', [NotificationController::class, 'settings']);
     Route::put('/notification-settings', [NotificationController::class, 'updateSettings']);
