@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\MahjMatch;
 use App\Models\MatchChatMessage;
 use App\Models\User;
+use App\Models\UserBlock;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -122,6 +123,15 @@ class MatchChatController extends Controller
     {
         if ($match->host_user_id === $user->id) {
             return;
+        }
+
+        $blockedByHost = UserBlock::query()
+            ->where('blocker_user_id', $match->host_user_id)
+            ->where('blocked_user_id', $user->id)
+            ->exists();
+
+        if ($blockedByHost) {
+            abort(403, 'This match chat is not available.');
         }
 
         if ($match->players()->whereKey($user->id)->exists()) {
