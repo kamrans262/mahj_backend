@@ -33,7 +33,6 @@ class StripeWebhookController extends Controller
 
         try {
             $type = (string) ($event['type'] ?? '');
-            $eventId = (string) ($event['id'] ?? $type);
             $object = data_get($event, 'data.object');
             $local = null;
 
@@ -73,7 +72,7 @@ class StripeWebhookController extends Controller
             }
 
             if ($local !== null) {
-                $this->notifications->subscriptionUpdated($local, $eventId);
+                $this->notifications->subscriptionUpdated($local);
             }
         } catch (Throwable $error) {
             report($error);
