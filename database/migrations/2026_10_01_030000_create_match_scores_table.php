@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('matches', function (Blueprint $table): void {
-            $table->timestamp('completed_at')->nullable()->after('cancelled_at');
+            $table->timestamp('completed_at')->nullable();
         });
 
         Schema::create('match_scores', function (Blueprint $table): void {
