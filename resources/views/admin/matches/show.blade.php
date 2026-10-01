@@ -132,7 +132,9 @@
                 <thead><tr><th>Player</th><th>Role</th><th>Score</th><th>Submitted by</th><th>Submitted</th></tr></thead>
                 <tbody>
                 @forelse($match->players as $player)
-                    @php($score = $match->scores->firstWhere('player_user_id', $player->id))
+                    @php
+                        $score = $match->scores->firstWhere('player_user_id', $player->id);
+                    @endphp
                     <tr>
                         <td>
                             <b>{{ $player->name }}</b>
