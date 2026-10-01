@@ -23,6 +23,7 @@ class DemoDataSeeder extends Seeder
             M7NotificationsDemoSeeder::class,
             M8CompletedMatchesDemoSeeder::class,
             M9SafetyDemoSeeder::class,
+            M10SupportContentSeeder::class,
         ]);
     }
 }
