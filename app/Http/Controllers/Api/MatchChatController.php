@@ -177,12 +177,6 @@ class MatchChatController extends Controller
 
     private function avatarUrl(Request $request, User $user): ?string
     {
-        if (! $user->avatar_path) {
-            return null;
-        }
-
-        return rtrim($request->getSchemeAndHttpHost(), '/')
-            .'/storage/'
-            .ltrim($user->avatar_path, '/');
+        return $user->avatarUrl($request->getSchemeAndHttpHost());
     }
 }
