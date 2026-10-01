@@ -170,6 +170,14 @@ class UserSafetyTest extends TestCase
         $this->actingAs($blocked, 'sanctum')
             ->getJson("/api/matches/{$match->id}")
             ->assertNotFound();
+
+        $this->actingAs($blocker, 'sanctum')
+            ->deleteJson("/api/users/{$blocked->id}/block")
+            ->assertOk();
+
+        $this->actingAs($blocked, 'sanctum')
+            ->getJson("/api/matches/{$match->id}")
+            ->assertOk();
     }
 
     public function test_admin_can_close_and_reopen_user_report(): void
