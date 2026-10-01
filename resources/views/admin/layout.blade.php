@@ -41,6 +41,8 @@
             <a class="{{ request()->routeIs('admin.notifications*') ? 'active' : '' }}" href="{{ route('admin.notifications') }}">Notifications</a>
             <a class="{{ request()->routeIs('admin.reports*') ? 'active' : '' }}" href="{{ route('admin.reports') }}">User Reports</a>
             <a class="{{ request()->routeIs('admin.blocks*') ? 'active' : '' }}" href="{{ route('admin.blocks') }}">Blocked Users</a>
+            <a class="{{ request()->routeIs('admin.support.requests*') ? 'active' : '' }}" href="{{ route('admin.support.requests') }}">Support Requests</a>
+            <a class="{{ request()->routeIs('admin.content*') ? 'active' : '' }}" href="{{ route('admin.content') }}">Content</a>
             <a class="{{ request()->routeIs('admin.sports*') ? 'active' : '' }}" href="{{ route('admin.sports') }}">Sports</a>
             <a class="{{ request()->routeIs('admin.subscriptions*') || request()->routeIs('admin.plans*') ? 'active' : '' }}" href="{{ route('admin.subscriptions') }}">Subscriptions</a>
         </nav>
