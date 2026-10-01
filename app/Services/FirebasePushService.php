@@ -80,7 +80,6 @@ class FirebasePushService
                     'android' => [
                         'priority' => 'high',
                         'notification' => [
-                            'channel_id' => 'mahj_notifications',
                             'sound' => 'default',
                         ],
                     ],
