@@ -30,6 +30,7 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::patch('/sports/{sport}', [AdminSportController::class, 'update'])->name('sports.update');
 
         Route::get('/matches', [AdminMatchController::class, 'index'])->name('matches');
+        Route::get('/completed-matches', [AdminMatchController::class, 'completed'])->name('matches.completed');
         Route::get('/invitations', [AdminInvitationController::class, 'index'])->name('invitations');
         Route::get('/matches/{match}', [AdminMatchController::class, 'show'])->name('matches.show');
         Route::patch('/matches/{match}', [AdminMatchController::class, 'update'])->name('matches.update');
