@@ -57,9 +57,9 @@ class M9SafetyDemoSeeder extends Seeder
                 'reporter_user_id' => $target->id,
                 'reported_user_id' => $first->id,
                 'reason' => 'inappropriate_behavior',
+                'notes' => 'M9 pending report demo.',
             ],
             [
-                'notes' => 'M9 pending report demo.',
                 'status' => 'pending',
                 'reviewed_at' => null,
             ],
@@ -72,9 +72,9 @@ class M9SafetyDemoSeeder extends Seeder
                     'reporter_user_id' => $target->id,
                     'reported_user_id' => $second->id,
                     'reason' => 'safety_concern',
+                    'notes' => 'M9 closed report demo.',
                 ],
                 [
-                    'notes' => 'M9 closed report demo.',
                     'status' => 'closed',
                     'reviewed_at' => now()->subHour(),
                 ],
