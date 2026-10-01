@@ -20,6 +20,7 @@ class DemoDataSeeder extends Seeder
             M5InvitationsDemoSeeder::class,
             DemoUserAvatarsSeeder::class,
             M6ChatDemoSeeder::class,
+            M7NotificationsDemoSeeder::class,
         ]);
     }
 }
