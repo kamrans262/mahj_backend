@@ -61,11 +61,17 @@ class MatchResource extends JsonResource
             'host' => [
                 'id' => (string) $this->host_user_id,
                 'name' => $this->host?->name ?? 'Host',
+                'avatar_url' => $this->host?->avatarUrl(
+                    $request->getSchemeAndHttpHost(),
+                ),
             ],
             'players' => $this->whenLoaded('players', fn () => $this->players
                 ->map(fn (User $player) => [
                     'id' => (string) $player->id,
                     'name' => $player->name,
+                    'avatar_url' => $player->avatarUrl(
+                        $request->getSchemeAndHttpHost(),
+                    ),
                 ])
                 ->values()),
             'is_joined' => $isJoined,
