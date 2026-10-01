@@ -7,6 +7,7 @@ use App\Http\Resources\MatchResource;
 use App\Models\MahjMatch;
 use App\Models\Sport;
 use App\Models\User;
+use App\Models\UserBlock;
 use App\Services\MatchChatService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -48,7 +49,11 @@ class MatchController extends Controller
             ->with(['host', 'players', 'sport'])
             ->withCount('players')
             ->whereIn('status', ['open', 'confirmed'])
-            ->where('starts_at', '>=', now()->subHours(3));
+            ->where('starts_at', '>=', now()->subHours(3))
+            ->whereDoesntHave(
+                'host.blockedUsers',
+                fn (Builder $query): Builder => $query->where('blocked_user_id', $user->id),
+            );
 
         if ($request->boolean('discover_only')) {
             $query
@@ -295,6 +300,8 @@ class MatchController extends Controller
                 ]);
             }
 
+            $this->ensureHostAllowsUser($user, $locked);
+
             if ($locked->players()->whereKey($user->id)->exists()) {
                 return $locked;
             }
@@ -478,6 +485,8 @@ class MatchController extends Controller
 
     private function ensureVisible(User $user, MahjMatch $match): void
     {
+        $this->ensureHostAllowsUser($user, $match);
+
         if ($match->is_public && ! $match->is_invite_only) {
             return;
         }
@@ -498,6 +507,22 @@ class MatchController extends Controller
         }
 
         abort(403, 'This match is private.');
+    }
+
+    private function ensureHostAllowsUser(User $user, MahjMatch $match): void
+    {
+        if ($match->host_user_id === $user->id) {
+            return;
+        }
+
+        $blocked = UserBlock::query()
+            ->where('blocker_user_id', $match->host_user_id)
+            ->where('blocked_user_id', $user->id)
+            ->exists();
+
+        if ($blocked) {
+            abort(404, 'Match not found.');
+        }
     }
 
     private function resource(Request $request, MahjMatch $match): array
