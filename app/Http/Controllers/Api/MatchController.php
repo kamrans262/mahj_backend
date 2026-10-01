@@ -8,6 +8,7 @@ use App\Models\MahjMatch;
 use App\Models\Sport;
 use App\Models\User;
 use App\Models\UserBlock;
+use App\Services\MahjNotificationService;
 use App\Services\MatchChatService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -20,8 +21,10 @@ use Illuminate\Validation\ValidationException;
 
 class MatchController extends Controller
 {
-    public function __construct(private readonly MatchChatService $chat)
-    {
+    public function __construct(
+        private readonly MatchChatService $chat,
+        private readonly MahjNotificationService $notifications,
+    ) {
     }
 
     private const MAX_DISCOVERY_ROWS = 250;
@@ -240,6 +243,8 @@ class MatchController extends Controller
             return $match;
         });
 
+        $this->notifications->nearbyMatch($match);
+
         return response()->json([
             'message' => 'Match created.',
             'match' => $this->resource($request, $match),
@@ -274,6 +279,7 @@ class MatchController extends Controller
             if (! $locked->starts_at?->equalTo($startsAt)) {
                 $locked->update(['starts_at' => $startsAt]);
                 $this->chat->scheduleChanged($locked);
+                $this->notifications->scheduleChanged($locked);
             }
 
             return $locked;
@@ -327,11 +333,13 @@ class MatchController extends Controller
 
             $locked->players()->attach($user->id, ['joined_at' => now()]);
             $this->chat->playerJoined($locked, $user);
+            $this->notifications->playerJoined($locked, $user);
             $count++;
 
             if ($count >= $locked->max_players) {
                 $locked->update(['status' => 'confirmed']);
                 $this->chat->matchConfirmed($locked);
+                $this->notifications->matchConfirmed($locked);
             }
 
             return $locked;
@@ -412,6 +420,7 @@ class MatchController extends Controller
                     'cancelled_at' => now(),
                 ]);
                 $this->chat->matchCancelled($locked);
+                $this->notifications->matchCancelled($locked);
             }
 
             return $locked;
