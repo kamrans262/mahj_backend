@@ -8,6 +8,7 @@ use App\Models\MahjMatch;
 use App\Models\MatchInvitation;
 use App\Models\User;
 use App\Models\UserBlock;
+use App\Services\MahjNotificationService;
 use App\Services\MatchChatService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -17,8 +18,10 @@ use Illuminate\Validation\ValidationException;
 
 class MatchInvitationController extends Controller
 {
-    public function __construct(private readonly MatchChatService $chat)
-    {
+    public function __construct(
+        private readonly MatchChatService $chat,
+        private readonly MahjNotificationService $notifications,
+    ) {
     }
 
     private const EARTH_RADIUS_MILES = 3958.7613;
@@ -266,7 +269,7 @@ class MatchInvitationController extends Controller
 
         DB::transaction(function () use ($match, $user, $userIds): void {
             foreach ($userIds as $inviteeId) {
-                MatchInvitation::query()->updateOrCreate(
+                $invitation = MatchInvitation::query()->updateOrCreate(
                     [
                         'match_id' => $match->id,
                         'invitee_user_id' => $inviteeId,
@@ -277,6 +280,8 @@ class MatchInvitationController extends Controller
                         'responded_at' => null,
                     ],
                 );
+
+                $this->notifications->matchInvitation($invitation);
             }
         });
 
@@ -349,6 +354,7 @@ class MatchInvitationController extends Controller
 
             $match->players()->attach($user->id, ['joined_at' => now()]);
             $this->chat->playerJoined($match, $user);
+            $this->notifications->playerJoined($match, $user);
             $count++;
 
             $lockedInvitation->update([
@@ -359,6 +365,7 @@ class MatchInvitationController extends Controller
             if ($count >= $match->max_players) {
                 $match->update(['status' => 'confirmed']);
                 $this->chat->matchConfirmed($match);
+                $this->notifications->matchConfirmed($match);
             }
 
             return $match;

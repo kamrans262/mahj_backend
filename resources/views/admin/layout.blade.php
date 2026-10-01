@@ -37,6 +37,7 @@
             <a class="{{ request()->routeIs('admin.matches*') ? 'active' : '' }}" href="{{ route('admin.matches') }}">Matches</a>
             <a class="{{ request()->routeIs('admin.invitations*') ? 'active' : '' }}" href="{{ route('admin.invitations') }}">Invitations</a>
             <a class="{{ request()->routeIs('admin.chats*') ? 'active' : '' }}" href="{{ route('admin.chats') }}">Match Chats</a>
+            <a class="{{ request()->routeIs('admin.notifications*') ? 'active' : '' }}" href="{{ route('admin.notifications') }}">Notifications</a>
             <a class="{{ request()->routeIs('admin.reports*') ? 'active' : '' }}" href="{{ route('admin.reports') }}">User Reports</a>
             <a class="{{ request()->routeIs('admin.blocks*') ? 'active' : '' }}" href="{{ route('admin.blocks') }}">Blocked Users</a>
             <a class="{{ request()->routeIs('admin.sports*') ? 'active' : '' }}" href="{{ route('admin.sports') }}">Sports</a>

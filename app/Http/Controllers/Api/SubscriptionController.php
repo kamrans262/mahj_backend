@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Models\UserSubscription;
+use App\Services\MahjNotificationService;
 use App\Services\StripeBillingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,8 +15,10 @@ use Illuminate\Validation\ValidationException;
 
 class SubscriptionController extends Controller
 {
-    public function __construct(private readonly StripeBillingService $stripe)
-    {
+    public function __construct(
+        private readonly StripeBillingService $stripe,
+        private readonly MahjNotificationService $notifications,
+    ) {
     }
 
     public function show(Request $request): JsonResponse
@@ -75,6 +78,7 @@ class SubscriptionController extends Controller
         });
 
         $subscription->load('plan');
+        $this->notifications->subscriptionUpdated($subscription);
 
         return response()->json([
             'message' => $subscription->status === 'trialing'
@@ -117,7 +121,10 @@ class SubscriptionController extends Controller
         }
 
         $remote = $this->stripe->retrieveSubscription($subscriptionId);
-        $this->stripe->syncRemoteSubscription($remote);
+        $subscription = $this->stripe->syncRemoteSubscription($remote);
+        if ($subscription !== null) {
+            $this->notifications->subscriptionUpdated($subscription);
+        }
 
         return response()->json([
             'message' => 'Stripe subscription confirmed.',
@@ -142,7 +149,10 @@ class SubscriptionController extends Controller
 
         if ($subscription?->provider === 'stripe') {
             $remote = $this->stripe->changeSubscriptionPlan($subscription, $plan);
-            $this->stripe->syncRemoteSubscription($remote);
+            $updated = $this->stripe->syncRemoteSubscription($remote);
+            if ($updated !== null) {
+                $this->notifications->subscriptionUpdated($updated);
+            }
 
             return response()->json([
                 'message' => 'Subscription plan updated.',
@@ -162,6 +172,7 @@ class SubscriptionController extends Controller
                 ?? now()->addMonth(),
             'cancel_at_period_end' => false,
         ])->save();
+        $this->notifications->subscriptionUpdated($subscription->refresh());
 
         return response()->json([
             'message' => 'Subscription plan updated.',
@@ -183,7 +194,10 @@ class SubscriptionController extends Controller
 
         if ($subscription->provider === 'stripe') {
             $remote = $this->stripe->cancelAtPeriodEnd($subscription);
-            $this->stripe->syncRemoteSubscription($remote);
+            $updated = $this->stripe->syncRemoteSubscription($remote);
+            if ($updated !== null) {
+                $this->notifications->subscriptionUpdated($updated);
+            }
 
             return response()->json([
                 'message' => 'Your subscription will cancel at the end of the current period.',
@@ -199,6 +213,8 @@ class SubscriptionController extends Controller
                 'cancel_at_period_end' => true,
             ]);
         }
+
+        $this->notifications->subscriptionUpdated($subscription->refresh());
 
         return response()->json([
             'message' => 'Subscription cancellation saved.',

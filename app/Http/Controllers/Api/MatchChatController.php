@@ -7,12 +7,18 @@ use App\Models\MahjMatch;
 use App\Models\MatchChatMessage;
 use App\Models\User;
 use App\Models\UserBlock;
+use App\Services\MahjNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
 class MatchChatController extends Controller
 {
+    public function __construct(
+        private readonly MahjNotificationService $notifications,
+    ) {
+    }
+
     public function index(Request $request, MahjMatch $match): JsonResponse
     {
         /** @var User $user */
@@ -113,6 +119,7 @@ class MatchChatController extends Controller
             'body' => $text,
         ]);
         $message->setRelation('sender', $user);
+        $this->notifications->chatMessage($match, $user, $message);
 
         return response()->json([
             'message' => $this->messageData($request, $message),

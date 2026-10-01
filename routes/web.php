@@ -36,6 +36,7 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::delete('/matches/{match}', [AdminMatchController::class, 'destroy'])->name('matches.delete');
 
         Route::get('/chats', [AdminCommunityController::class, 'chats'])->name('chats');
+        Route::get('/notifications', [AdminCommunityController::class, 'notifications'])->name('notifications');
         Route::get('/reports', [AdminCommunityController::class, 'reports'])->name('reports');
         Route::get('/blocks', [AdminCommunityController::class, 'blocks'])->name('blocks');
 
