@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Hash;
 class MultanMapDemoSeeder extends Seeder
 {
     private const TARGET_EMAIL = 'viewer@mahj.test';
-    private const MATCH_COUNT = 100;
+    private const MATCH_COUNT = 15;
     private const CENTER_LATITUDE = 30.1575000;
     private const CENTER_LONGITUDE = 71.5249000;
 
@@ -68,6 +68,23 @@ class MultanMapDemoSeeder extends Seeder
             );
         });
 
+        // If an older version seeded more demo matches, keep them out of
+        // discovery without risking foreign-key cleanup issues.
+        MahjMatch::query()
+            ->where('venue_name', 'like', 'Multan Map Demo %')
+            ->whereNotIn(
+                'venue_name',
+                collect(range(1, self::MATCH_COUNT))
+                    ->map(fn (int $number): string => sprintf('Multan Map Demo %03d', $number))
+                    ->all(),
+            )
+            ->update([
+                'status' => 'cancelled',
+                'is_featured' => false,
+                'featured_order' => 0,
+                'cancelled_at' => now(),
+            ]);
+
         for ($index = 0; $index < self::MATCH_COUNT; $index++) {
             $matchNumber = $index + 1;
             $host = $hosts[$index % $hosts->count()];
@@ -75,11 +92,11 @@ class MultanMapDemoSeeder extends Seeder
 
             [$latitude, $longitude] = $this->coordinatesFor($index);
 
-            // Start seven days from now so none of the seeded matches disappear
-            // after only two or three days. The full set stays populated for
-            // more than three months after a single seeder run.
+            // Spread matches one week apart, starting seven days ahead. This
+            // keeps the demo map populated for roughly three months instead of
+            // losing all demo data after only two or three days.
             $startsAt = now()
-                ->addDays(7 + $index)
+                ->addDays(7 + ($index * 7))
                 ->setTime(17 + ($index % 5), ($index % 4) * 15);
 
             $match = MahjMatch::query()->updateOrCreate(
@@ -96,8 +113,8 @@ class MultanMapDemoSeeder extends Seeder
                     'is_public' => true,
                     'is_invite_only' => false,
                     'status' => 'open',
-                    'is_featured' => $index < 10,
-                    'featured_order' => $index < 10 ? $index + 1 : 0,
+                    'is_featured' => $index < 5,
+                    'featured_order' => $index < 5 ? $index + 1 : 0,
                     'max_players' => 4,
                     'notes' => 'Persistent Multan-area demo match for map and nearby-match UI testing.',
                     'latitude' => $latitude,
