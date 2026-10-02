@@ -183,6 +183,12 @@ class SupportContentTest extends TestCase
         $this->assertSame('• First item', $terms->content['sections'][0]['paragraphs'][1]);
         $this->assertStringContainsString('<strong>legal</strong>', $terms->content['html']);
 
+        $this->getJson('/api/content/legal')
+            ->assertOk()
+            ->assertJsonPath('terms.sections.0.title', 'Updated')
+            ->assertJsonPath('terms.sections.0.paragraphs.0', 'Updated **legal** copy.')
+            ->assertJsonPath('terms.sections.0.paragraphs.1', '• First item');
+
         $this->actingAs($admin)
             ->get('/admin/support-requests')
             ->assertOk()
