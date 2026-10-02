@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Hash;
 
 class MultanMapDemoSeeder extends Seeder
 {
-    private const TARGET_EMAIL = 'viewer@mahj.test';
+    private const TARGET_EMAIL = 'map.map.viewer@mahj.test';
     private const MATCH_COUNT = 15;
     private const CENTER_LATITUDE = 30.1575000;
     private const CENTER_LONGITUDE = 71.5249000;
