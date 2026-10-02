@@ -172,20 +172,16 @@ class SupportContentTest extends TestCase
         $this->actingAs($admin)
             ->patch("/admin/content/pages/{$terms->id}", [
                 'title' => 'Terms & Conditions',
-                'content_json' => json_encode([
-                    'sections' => [
-                        [
-                            'title' => 'Updated',
-                            'paragraphs' => ['Updated legal copy.'],
-                        ],
-                    ],
-                ]),
+                'content_html' => '<h2>Updated</h2><p>Updated <strong>legal</strong> copy.</p><ul><li>First item</li></ul>',
             ])
             ->assertRedirect();
 
         $terms->refresh();
         $this->assertSame('Terms & Conditions', $terms->title);
         $this->assertSame('Updated', $terms->content['sections'][0]['title']);
+        $this->assertSame('Updated **legal** copy.', $terms->content['sections'][0]['paragraphs'][0]);
+        $this->assertSame('• First item', $terms->content['sections'][0]['paragraphs'][1]);
+        $this->assertStringContainsString('<strong>legal</strong>', $terms->content['html']);
 
         $this->actingAs($admin)
             ->get('/admin/support-requests')
