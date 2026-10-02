@@ -65,15 +65,40 @@
 @foreach([['page' => $terms, 'heading' => 'Terms & Conditions'], ['page' => $privacy, 'heading' => 'Privacy Policy']] as $item)
     <div class="card" style="padding:18px;margin-top:16px">
         <div class="card-title">{{ $item['heading'] }}</div>
-        <div class="card-copy" style="margin-bottom:14px">Edit the structured sections returned to the app. Publishing updates the displayed last-updated date.</div>
+        <div class="card-copy" style="margin-bottom:14px">Edit the content visually. Use Heading for section titles, then format body text with bold, italic and lists as needed.</div>
         @if($item['page'])
-            <form method="post" action="{{ route('admin.content.pages.update', $item['page']) }}">
+            @php
+                $editorHtml = data_get($item['page']->content, 'html');
+                if (! is_string($editorHtml) || trim($editorHtml) === '') {
+                    $editorHtml = '';
+                    foreach (data_get($item['page']->content, 'sections', []) as $section) {
+                        $editorHtml .= '<h2>'.e((string) data_get($section, 'title', '')).'</h2>';
+                        foreach ((array) data_get($section, 'paragraphs', []) as $paragraph) {
+                            $editorHtml .= '<p>'.e((string) $paragraph).'</p>';
+                        }
+                    }
+                }
+            @endphp
+            <form method="post" action="{{ route('admin.content.pages.update', $item['page']) }}" data-rich-editor-form>
                 @csrf @method('patch')
                 <div class="field"><label>Title</label><input class="input" name="title" required value="{{ $item['page']->title }}"></div>
                 <div class="field" style="margin-top:12px">
-                    <label>Content JSON</label>
-                    <textarea class="input" name="content_json" rows="14" required>{{ json_encode($item['page']->content, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES) }}</textarea>
-                    <small>Keep a top-level "sections" array. Each section uses "title" and "paragraphs".</small>
+                    <label>Content</label>
+                    <div class="rich-editor-shell">
+                        <div class="rich-editor-toolbar" aria-label="Text formatting toolbar">
+                            <button type="button" data-command="formatBlock" data-value="h2">Heading</button>
+                            <button type="button" data-command="formatBlock" data-value="p">Paragraph</button>
+                            <span class="rich-editor-divider"></span>
+                            <button type="button" data-command="bold"><b>B</b></button>
+                            <button type="button" data-command="italic"><i>I</i></button>
+                            <button type="button" data-command="insertUnorderedList">• List</button>
+                            <button type="button" data-command="insertOrderedList">1. List</button>
+                            <button type="button" data-command="removeFormat">Clear</button>
+                        </div>
+                        <div class="rich-editor" contenteditable="true" spellcheck="true" data-rich-editor>{!! $editorHtml !!}</div>
+                    </div>
+                    <textarea name="content_html" data-rich-editor-input hidden>{{ $editorHtml }}</textarea>
+                    <small>Headings become bold section titles in the app. Bold, italic and list formatting are preserved when published.</small>
                 </div>
                 <div style="margin-top:14px"><button class="btn" type="submit">Publish {{ $item['heading'] }}</button></div>
             </form>
@@ -82,4 +107,42 @@
         @endif
     </div>
 @endforeach
+
+<style>
+    .rich-editor-shell{border:1px solid #D0D5DD;border-radius:12px;background:#fff;overflow:hidden}
+    .rich-editor-shell:focus-within{border-color:var(--orange);box-shadow:0 0 0 3px rgba(236,93,1,.1)}
+    .rich-editor-toolbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px;border-bottom:1px solid var(--line);background:#FCFCFD}
+    .rich-editor-toolbar button{height:32px;padding:0 10px;border:1px solid #D0D5DD;border-radius:8px;background:#fff;color:var(--ink);font:inherit;font-size:11px;font-weight:600;cursor:pointer}
+    .rich-editor-toolbar button:hover{border-color:#F4CDB5;background:#FFF8F3;color:var(--orange)}
+    .rich-editor-divider{width:1px;height:22px;background:var(--line);margin:0 2px}
+    .rich-editor{min-height:320px;padding:18px;outline:none;line-height:1.65;color:var(--ink)}
+    .rich-editor h2,.rich-editor h3{margin:20px 0 8px;font-size:18px;line-height:1.35}
+    .rich-editor h2:first-child,.rich-editor h3:first-child{margin-top:0}
+    .rich-editor p{margin:0 0 12px}
+    .rich-editor ul,.rich-editor ol{margin:0 0 12px;padding-left:24px}
+    .rich-editor li{margin:4px 0}
+</style>
+
+<script>
+document.querySelectorAll('[data-rich-editor-form]').forEach((form) => {
+    const editor = form.querySelector('[data-rich-editor]');
+    const input = form.querySelector('[data-rich-editor-input]');
+
+    form.querySelectorAll('[data-command]').forEach((button) => {
+        button.addEventListener('mousedown', (event) => event.preventDefault());
+        button.addEventListener('click', () => {
+            editor.focus();
+            document.execCommand(
+                button.dataset.command,
+                false,
+                button.dataset.value || null
+            );
+        });
+    });
+
+    form.addEventListener('submit', () => {
+        input.value = editor.innerHTML.trim();
+    });
+});
+</script>
 @endsection
