@@ -77,7 +77,10 @@ class SupportContentTest extends TestCase
         Storage::fake('public');
 
         $user = User::factory()->create();
-        $image = UploadedFile::fake()->image('problem.png', 800, 600);
+        $image = UploadedFile::fake()->createWithContent(
+            'problem.png',
+            base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=')
+        );
 
         $this->actingAs($user, 'sanctum')
             ->post('/api/support-requests', [
