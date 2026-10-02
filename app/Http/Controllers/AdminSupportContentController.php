@@ -99,19 +99,24 @@ class AdminSupportContentController extends Controller
 
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:160'],
-            'content_json' => ['required', 'string'],
+            'content_html' => ['required', 'string', 'max:100000'],
         ]);
 
-        $decoded = json_decode($validated['content_json'], true);
-        if (! is_array($decoded) || ! isset($decoded['sections']) || ! is_array($decoded['sections'])) {
+        $html = $this->sanitizeLegalHtml($validated['content_html']);
+        $sections = $this->sectionsFromLegalHtml($html);
+
+        if ($sections === []) {
             throw ValidationException::withMessages([
-                'content_json' => ['Content must be valid JSON containing a sections array.'],
+                'content_html' => ['Add at least one heading and some content before publishing.'],
             ]);
         }
 
         $page->update([
             'title' => trim($validated['title']),
-            'content' => $decoded,
+            'content' => [
+                'html' => $html,
+                'sections' => $sections,
+            ],
             'published_at' => now(),
         ]);
 
@@ -134,6 +139,133 @@ class AdminSupportContentController extends Controller
         );
 
         return back()->with('status', 'Support email updated.');
+    }
+
+    private function sanitizeLegalHtml(string $html): string
+    {
+        $allowed = '<h2><h3><p><div><strong><b><em><i><ul><ol><li><br>';
+        $clean = strip_tags(trim($html), $allowed);
+
+        $clean = preg_replace_callback(
+            '/<\s*(\/?)\s*(h2|h3|p|div|strong|b|em|i|ul|ol|li|br)\b[^>]*>/i',
+            static function (array $matches): string {
+                $closing = $matches[1] === '/';
+                $tag = strtolower($matches[2]);
+                $tag = match ($tag) {
+                    'b' => 'strong',
+                    'i' => 'em',
+                    'div' => 'p',
+                    default => $tag,
+                };
+
+                if ($tag === 'br') {
+                    return '<br>';
+                }
+
+                return $closing ? "</{$tag}>" : "<{$tag}>";
+            },
+            $clean,
+        );
+
+        $clean = preg_replace('/<p>\s*<\/p>/i', '', (string) $clean);
+
+        return trim((string) $clean);
+    }
+
+    private function sectionsFromLegalHtml(string $html): array
+    {
+        preg_match_all(
+            '/<(h2|h3|p|ul|ol)>(.*?)<\/\1>/is',
+            $html,
+            $blocks,
+            PREG_SET_ORDER,
+        );
+
+        $sections = [];
+        $title = '';
+        $paragraphs = [];
+
+        $flush = static function () use (&$sections, &$title, &$paragraphs): void {
+            if ($title === '' && $paragraphs === []) {
+                return;
+            }
+
+            $sections[] = [
+                'title' => $title !== '' ? $title : 'Overview',
+                'paragraphs' => $paragraphs,
+            ];
+
+            $title = '';
+            $paragraphs = [];
+        };
+
+        foreach ($blocks as $block) {
+            $tag = strtolower($block[1]);
+            $inner = $block[2];
+
+            if (in_array($tag, ['h2', 'h3'], true)) {
+                $flush();
+                $title = $this->plainTextFromHtml($inner);
+
+                continue;
+            }
+
+            if (in_array($tag, ['ul', 'ol'], true)) {
+                preg_match_all('/<li>(.*?)<\/li>/is', $inner, $items);
+                foreach ($items[1] ?? [] as $index => $item) {
+                    $text = $this->inlineTextFromHtml($item);
+                    if ($text === '') {
+                        continue;
+                    }
+
+                    $paragraphs[] = $tag === 'ol'
+                        ? ($index + 1).'. '.$text
+                        : '• '.$text;
+                }
+
+                continue;
+            }
+
+            $text = $this->inlineTextFromHtml($inner);
+            if ($text !== '') {
+                $paragraphs[] = $text;
+            }
+        }
+
+        $flush();
+
+        if ($sections === []) {
+            $fallback = $this->inlineTextFromHtml($html);
+            if ($fallback !== '') {
+                $sections[] = [
+                    'title' => 'Overview',
+                    'paragraphs' => [$fallback],
+                ];
+            }
+        }
+
+        return $sections;
+    }
+
+    private function inlineTextFromHtml(string $html): string
+    {
+        $text = preg_replace('/<br\s*\/?>/i', "\n", $html);
+        $text = preg_replace('/<strong>(.*?)<\/strong>/is', '**$1**', (string) $text);
+        $text = preg_replace('/<em>(.*?)<\/em>/is', '*$1*', (string) $text);
+        $text = strip_tags((string) $text);
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace('/[ \t]+/', ' ', $text);
+
+        return trim((string) $text);
+    }
+
+    private function plainTextFromHtml(string $html): string
+    {
+        $text = strip_tags($html);
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace('/\s+/', ' ', $text);
+
+        return trim((string) $text);
     }
 
     private function validateFaq(Request $request): array
