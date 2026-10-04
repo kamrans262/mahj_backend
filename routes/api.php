@@ -57,7 +57,7 @@ Route::middleware(['auth:sanctum', 'account.active'])->group(function (): void {
 
     Route::get('/sports', [SportController::class, 'index']);
     Route::get('/locations/search', [LocationController::class, 'search'])
-        ->middleware('throttle:10,1');
+        ->middleware('throttle:30,1');
 
     Route::get('/matches', [MatchController::class, 'index']);
     Route::get('/my-matches', [MatchInvitationController::class, 'myMatches']);
