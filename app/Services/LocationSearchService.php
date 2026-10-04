@@ -24,7 +24,7 @@ class LocationSearchService
         }
 
         $limit = max(1, min($limit, 8));
-        $cacheKey = 'mahj:google-location-search:v3:'.sha1(mb_strtolower($query)."|".$limit);
+        $cacheKey = 'mahj:google-location-search:v4:'.sha1(mb_strtolower($query)."|".$limit);
 
         return Cache::remember($cacheKey, now()->addDays(30), function () use ($query, $limit, $apiKey): array {
             try {
@@ -59,14 +59,23 @@ class LocationSearchService
     {
         $url = (string) config(
             'services.google_maps.places_text_search_url',
-            'https://maps.googleapis.com/maps/api/place/textsearch/json'
+            'https://places.googleapis.com/v1/places:searchText'
         );
 
         $response = Http::acceptJson()
+            ->withHeaders([
+                'X-Goog-Api-Key' => $apiKey,
+                'X-Goog-FieldMask' => implode(',', [
+                    'places.displayName',
+                    'places.formattedAddress',
+                    'places.location',
+                    'places.addressComponents',
+                ]),
+            ])
             ->timeout(6)
-            ->get($url, [
-                'query' => $query,
-                'key' => $apiKey,
+            ->post($url, [
+                'textQuery' => $query,
+                'pageSize' => $limit,
             ]);
 
         if (! $response->successful()) {
@@ -74,17 +83,13 @@ class LocationSearchService
         }
 
         $payload = $response->json();
-        if (! is_array($payload) || ($payload['status'] ?? null) !== 'OK') {
-            return [];
-        }
-
-        $results = $payload['results'] ?? null;
+        $results = is_array($payload) ? ($payload['places'] ?? null) : null;
         if (! is_array($results)) {
             return [];
         }
 
         return collect($results)
-            ->map(fn (mixed $item): ?array => $this->normalizeResult($item, true))
+            ->map(fn (mixed $item): ?array => $this->normalizePlaceResult($item))
             ->filter()
             ->take($limit)
             ->values()
@@ -140,7 +145,7 @@ class LocationSearchService
         }
 
         return collect($results)
-            ->map(fn (mixed $item): ?array => $this->normalizeResult($item))
+            ->map(fn (mixed $item): ?array => $this->normalizeGeocodeResult($item))
             ->filter()
             ->take($limit)
             ->values()
@@ -156,10 +161,58 @@ class LocationSearchService
     }
 
     /**
-     * @param array<string, mixed> $item
      * @return array<string, mixed>|null
      */
-    private function normalizeResult(mixed $item, bool $includePlaceName = false): ?array
+    private function normalizePlaceResult(mixed $item): ?array
+    {
+        if (! is_array($item)) {
+            return null;
+        }
+
+        $location = $item['location'] ?? null;
+        if (
+            ! is_array($location)
+            || ! is_numeric($location['latitude'] ?? null)
+            || ! is_numeric($location['longitude'] ?? null)
+        ) {
+            return null;
+        }
+
+        $address = trim((string) ($item['formattedAddress'] ?? ''));
+        $displayName = $item['displayName'] ?? null;
+        $name = is_array($displayName)
+            ? trim((string) ($displayName['text'] ?? ''))
+            : '';
+
+        $label = $address;
+        if ($name !== '') {
+            $label = $address === '' || str_contains(mb_strtolower($address), mb_strtolower($name))
+                ? ($address !== '' ? $address : $name)
+                : $name.', '.$address;
+        }
+
+        if ($label === '') {
+            return null;
+        }
+
+        $components = is_array($item['addressComponents'] ?? null)
+            ? $item['addressComponents']
+            : [];
+
+        return [
+            'label' => $label,
+            'latitude' => (float) $location['latitude'],
+            'longitude' => (float) $location['longitude'],
+            'city' => $this->newPlacesComponent($components, ['locality', 'postal_town']),
+            'state' => $this->newPlacesComponent($components, ['administrative_area_level_1']),
+            'zip_code' => $this->newPlacesComponent($components, ['postal_code']),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function normalizeGeocodeResult(mixed $item): ?array
     {
         if (! is_array($item)) {
             return null;
@@ -178,16 +231,7 @@ class LocationSearchService
             ? $item['address_components']
             : [];
 
-        $address = trim((string) ($item['formatted_address'] ?? ''));
-        $name = trim((string) ($item['name'] ?? ''));
-        $label = $address;
-
-        if ($includePlaceName && $name !== '') {
-            $label = $address === '' || str_contains(mb_strtolower($address), mb_strtolower($name))
-                ? ($address !== '' ? $address : $name)
-                : $name.', '.$address;
-        }
-
+        $label = trim((string) ($item['formatted_address'] ?? ''));
         if ($label === '') {
             return null;
         }
@@ -196,9 +240,9 @@ class LocationSearchService
             'label' => $label,
             'latitude' => (float) $location['lat'],
             'longitude' => (float) $location['lng'],
-            'city' => $this->component($components, ['locality', 'postal_town']),
-            'state' => $this->component($components, ['administrative_area_level_1']),
-            'zip_code' => $this->component($components, ['postal_code']),
+            'city' => $this->geocodeComponent($components, ['locality', 'postal_town']),
+            'state' => $this->geocodeComponent($components, ['administrative_area_level_1']),
+            'zip_code' => $this->geocodeComponent($components, ['postal_code']),
         ];
     }
 
@@ -206,7 +250,28 @@ class LocationSearchService
      * @param array<int, mixed> $components
      * @param array<int, string> $wantedTypes
      */
-    private function component(array $components, array $wantedTypes): string
+    private function newPlacesComponent(array $components, array $wantedTypes): string
+    {
+        foreach ($components as $component) {
+            if (! is_array($component) || ! is_array($component['types'] ?? null)) {
+                continue;
+            }
+
+            foreach ($wantedTypes as $type) {
+                if (in_array($type, $component['types'], true)) {
+                    return (string) ($component['longText'] ?? $component['shortText'] ?? '');
+                }
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * @param array<int, mixed> $components
+     * @param array<int, string> $wantedTypes
+     */
+    private function geocodeComponent(array $components, array $wantedTypes): string
     {
         foreach ($components as $component) {
             if (! is_array($component) || ! is_array($component['types'] ?? null)) {
