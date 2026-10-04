@@ -42,7 +42,7 @@ return [
         ),
         'places_text_search_url' => env(
             'GOOGLE_MAPS_PLACES_TEXT_SEARCH_URL',
-            'https://maps.googleapis.com/maps/api/place/textsearch/json'
+            'https://places.googleapis.com/v1/places:searchText'
         ),
     ],
 
