@@ -40,6 +40,10 @@ return [
             'GOOGLE_MAPS_GEOCODING_URL',
             'https://maps.googleapis.com/maps/api/geocode/json'
         ),
+        'places_text_search_url' => env(
+            'GOOGLE_MAPS_PLACES_TEXT_SEARCH_URL',
+            'https://maps.googleapis.com/maps/api/place/textsearch/json'
+        ),
     ],
 
     'firebase' => [
