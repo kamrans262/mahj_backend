@@ -12,6 +12,7 @@ class SportController extends Controller
     {
         $sports = Sport::query()
             ->where('is_active', true)
+            ->where('slug', 'mah-jongg')
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get(['id', 'name', 'slug', 'icon_key']);
