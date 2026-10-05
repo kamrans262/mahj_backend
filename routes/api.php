@@ -63,6 +63,7 @@ Route::middleware(['auth:sanctum', 'account.active'])->group(function (): void {
     Route::get('/my-matches', [MatchInvitationController::class, 'myMatches']);
     Route::post('/matches', [MatchController::class, 'store']);
     Route::get('/matches/{match}', [MatchController::class, 'show']);
+    Route::get('/matches/{match}/people', [MatchController::class, 'people']);
     Route::put('/matches/{match}/schedule', [MatchController::class, 'updateSchedule']);
     Route::post('/matches/{match}/join', [MatchController::class, 'join']);
     Route::post('/matches/{match}/leave', [MatchController::class, 'leave']);
