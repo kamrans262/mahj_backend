@@ -82,6 +82,47 @@ class UserModerationController extends Controller
         ]);
     }
 
+    public function search(Request $request): JsonResponse
+    {
+        /** @var User $currentUser */
+        $currentUser = $request->user();
+
+        $validated = $request->validate([
+            'q' => ['required', 'string', 'min:2', 'max:120'],
+        ]);
+
+        $search = trim((string) $validated['q']);
+        $like = '%'.$search.'%';
+
+        $blockedIds = UserBlock::query()
+            ->where('blocker_user_id', $currentUser->id)
+            ->pluck('blocked_user_id');
+
+        $users = User::query()
+            ->withCount('joinedMatches')
+            ->whereKeyNot($currentUser->id)
+            ->where('is_suspended', false)
+            ->where(function ($query) use ($like): void {
+                $query->where('name', 'like', $like)
+                    ->orWhere('email', 'like', $like)
+                    ->orWhere('city', 'like', $like);
+            })
+            ->orderBy('name')
+            ->limit(20)
+            ->get();
+
+        return response()->json([
+            'data' => $users
+                ->map(fn (User $user): array => $this->userData(
+                    $request,
+                    $user,
+                ) + [
+                    'is_blocked' => $blockedIds->contains($user->id),
+                ])
+                ->values(),
+        ]);
+    }
+
     public function report(Request $request, User $user): JsonResponse
     {
         /** @var User $reporter */
