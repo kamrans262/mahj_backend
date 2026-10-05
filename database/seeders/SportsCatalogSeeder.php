@@ -21,7 +21,7 @@ class SportsCatalogSeeder extends Seeder
         );
 
         Sport::query()
-            ->whereKeyNot($mahJongg->id)
+            ->where('id', '!=', $mahJongg->id)
             ->update(['is_active' => false]);
 
         MahjMatch::query()->update([
