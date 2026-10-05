@@ -93,6 +93,13 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
+    public function favoriteMatches(): BelongsToMany
+    {
+        return $this->belongsToMany(MahjMatch::class, 'match_favorites', 'user_id', 'match_id')
+            ->withTimestamps();
+    }
+
+
     public function sentMatchInvitations(): HasMany
     {
         return $this->hasMany(MatchInvitation::class, 'inviter_user_id');
