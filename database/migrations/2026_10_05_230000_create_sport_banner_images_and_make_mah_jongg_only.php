@@ -46,6 +46,20 @@ return new class extends Migration
                 ]);
         }
 
+        $legacyBannerPath = DB::table('sports')
+            ->where('id', $mahJonggId)
+            ->value('banner_image_path');
+
+        if (filled($legacyBannerPath)) {
+            DB::table('sport_banner_images')->insert([
+                'sport_id' => $mahJonggId,
+                'image_path' => $legacyBannerPath,
+                'sort_order' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
         DB::table('sports')
             ->where('id', '!=', $mahJonggId)
             ->update([
