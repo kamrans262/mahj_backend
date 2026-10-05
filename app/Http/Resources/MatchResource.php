@@ -24,8 +24,21 @@ class MatchResource extends JsonResource
         $sportName = $this->sport?->name
             ?? $this->custom_sport_name
             ?? $this->name;
-        $bannerImageUrl = $this->sport?->banner_image_path
-            ? rtrim($request->getSchemeAndHttpHost(), '/').'/storage/'.ltrim($this->sport->banner_image_path, '/')
+        $bannerPath = $this->sport?->banner_image_path;
+        $bannerImages = $this->sport?->bannerImages;
+
+        if ($bannerImages !== null && $bannerImages->isNotEmpty()) {
+            $bannerIndexSeed = $this->is_featured && (int) $this->featured_order > 0
+                ? (int) $this->featured_order - 1
+                : max(0, (int) $this->id - 1);
+            $bannerImage = $bannerImages->values()->get(
+                $bannerIndexSeed % $bannerImages->count(),
+            );
+            $bannerPath = $bannerImage?->image_path;
+        }
+
+        $bannerImageUrl = $bannerPath
+            ? rtrim($request->getSchemeAndHttpHost(), '/').'/storage/'.ltrim($bannerPath, '/')
             : null;
         $distance = $this->getAttribute('distance_miles');
 
