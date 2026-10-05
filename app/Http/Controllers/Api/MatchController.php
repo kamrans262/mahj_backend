@@ -221,9 +221,9 @@ class MatchController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'sport_id' => ['nullable', 'integer', 'exists:sports,id', 'required_without_all:custom_sport_name,name'],
-            'custom_sport_name' => ['nullable', 'string', 'max:100', 'required_without_all:sport_id,name'],
-            'name' => ['nullable', 'string', 'max:120', 'required_without_all:sport_id,custom_sport_name'],
+            'sport_id' => ['required', 'integer', 'exists:sports,id'],
+            'custom_sport_name' => ['nullable', 'string', 'max:100'],
+            'name' => ['nullable', 'string', 'max:120'],
             'location_address' => ['required', 'string', 'max:255'],
             'venue_name' => ['nullable', 'string', 'max:160'],
             'starts_at' => ['required', 'date', 'after:now'],
@@ -237,23 +237,19 @@ class MatchController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        $sport = isset($validated['sport_id'])
-            ? Sport::query()->where('is_active', true)->find($validated['sport_id'])
-            : null;
+        $sport = Sport::query()
+            ->where('is_active', true)
+            ->where('slug', 'mah-jongg')
+            ->find($validated['sport_id']);
 
-        if (isset($validated['sport_id']) && $sport === null) {
+        if ($sport === null) {
             throw ValidationException::withMessages([
-                'sport_id' => ['The selected sport is not available.'],
+                'sport_id' => ['Only Mah Jongg matches can be created.'],
             ]);
         }
 
-        $customSportName = filled($validated['custom_sport_name'] ?? null)
-            ? trim((string) $validated['custom_sport_name'])
-            : null;
-        $legacyName = filled($validated['name'] ?? null)
-            ? trim((string) $validated['name'])
-            : null;
-        $displayName = $sport?->name ?? $customSportName ?? $legacyName;
+        $customSportName = null;
+        $displayName = 'Mah Jongg';
 
         $match = DB::transaction(function () use ($validated, $user, $sport, $customSportName, $displayName): MahjMatch {
             $inviteOnly = (bool) $validated['is_invite_only'];
