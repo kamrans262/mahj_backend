@@ -171,7 +171,14 @@ class MatchController extends Controller
 
     public function show(Request $request, MahjMatch $match): JsonResponse
     {
-        $this->ensureVisible($request->user(), $match);
+        /** @var User $user */
+        $user = $request->user();
+        $this->ensureVisible($user, $match);
+
+        $match->setAttribute(
+            'is_favorite',
+            $user->favoriteMatches()->whereKey($match->id)->exists(),
+        );
 
         return response()->json([
             'match' => $this->resource($request, $match),
