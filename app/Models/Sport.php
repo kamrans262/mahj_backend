@@ -10,6 +10,8 @@ class Sport extends Model
 {
     use HasFactory;
 
+    protected $with = ['bannerImages'];
+
     protected $fillable = [
         'name',
         'slug',
