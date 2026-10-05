@@ -104,8 +104,9 @@ class AdminMatchController extends Controller
         return view('admin.matches.show', [
             'match' => $match,
             'sports' => Sport::query()
+                ->where('is_active', true)
+                ->where('slug', 'mah-jongg')
                 ->orderBy('sort_order')
-                ->orderBy('name')
                 ->get(),
         ]);
     }
@@ -113,8 +114,8 @@ class AdminMatchController extends Controller
     public function update(Request $request, MahjMatch $match): RedirectResponse
     {
         $validated = $request->validate([
-            'sport_id' => ['nullable', 'integer', 'exists:sports,id', 'required_without:custom_sport_name'],
-            'custom_sport_name' => ['nullable', 'string', 'max:100', 'required_without:sport_id'],
+            'sport_id' => ['required', 'integer', 'exists:sports,id'],
+            'custom_sport_name' => ['nullable', 'string', 'max:100'],
             'location_address' => ['required', 'string', 'max:255'],
             'venue_name' => ['nullable', 'string', 'max:160'],
             'notes' => ['nullable', 'string', 'max:1000'],
@@ -129,13 +130,19 @@ class AdminMatchController extends Controller
         ]);
 
         $inviteOnly = $request->boolean('is_invite_only');
-        $sport = isset($validated['sport_id'])
-            ? Sport::query()->find($validated['sport_id'])
-            : null;
-        $customSportName = filled($validated['custom_sport_name'] ?? null)
-            ? trim((string) $validated['custom_sport_name'])
-            : null;
-        $displayName = $sport?->name ?? $customSportName;
+        $sport = Sport::query()
+            ->where('is_active', true)
+            ->where('slug', 'mah-jongg')
+            ->find($validated['sport_id']);
+
+        if ($sport === null) {
+            return back()->withErrors([
+                'sport_id' => 'Only Mah Jongg is available.',
+            ])->withInput();
+        }
+
+        $customSportName = null;
+        $displayName = 'Mah Jongg';
 
         $match->update([
             'name' => $displayName,
