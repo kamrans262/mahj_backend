@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\MatchResource;
 use App\Models\MahjMatch;
+use App\Models\MatchInvitation;
 use App\Models\Sport;
 use App\Models\User;
 use App\Models\UserBlock;
@@ -174,6 +175,46 @@ class MatchController extends Controller
 
         return response()->json([
             'match' => $this->resource($request, $match),
+        ]);
+    }
+
+    public function people(Request $request, MahjMatch $match): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $this->ensureVisible($user, $match);
+
+        $match->load('players');
+
+        $invitedPlayers = MatchInvitation::query()
+            ->with('invitee')
+            ->where('match_id', $match->id)
+            ->where('inviter_user_id', $user->id)
+            ->latest()
+            ->get()
+            ->map(function (MatchInvitation $invitation) use ($request): array {
+                return [
+                    'id' => (string) $invitation->invitee_user_id,
+                    'name' => $invitation->invitee?->name ?? 'Player',
+                    'avatar_url' => $invitation->invitee?->avatarUrl(
+                        $request->getSchemeAndHttpHost(),
+                    ),
+                    'status' => $invitation->status,
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'players' => $match->players
+                ->map(fn (User $player): array => [
+                    'id' => (string) $player->id,
+                    'name' => $player->name,
+                    'avatar_url' => $player->avatarUrl(
+                        $request->getSchemeAndHttpHost(),
+                    ),
+                ])
+                ->values(),
+            'invited_players' => $invitedPlayers,
         ]);
     }
 
