@@ -68,6 +68,13 @@ class MahjMatch extends Model
             ->withTimestamps();
     }
 
+    public function favoritedByUsers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'match_favorites', 'match_id', 'user_id')
+            ->withTimestamps();
+    }
+
+
     public function invitations(): HasMany
     {
         return $this->hasMany(MatchInvitation::class, 'match_id');
