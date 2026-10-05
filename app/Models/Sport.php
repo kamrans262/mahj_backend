@@ -27,6 +27,13 @@ class Sport extends Model
         ];
     }
 
+    public function bannerImages(): HasMany
+    {
+        return $this->hasMany(SportBannerImage::class)
+            ->orderBy('sort_order')
+            ->orderBy('id');
+    }
+
     public function matches(): HasMany
     {
         return $this->hasMany(MahjMatch::class);
