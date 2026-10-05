@@ -41,6 +41,7 @@ class MatchResource extends JsonResource
             ? rtrim($request->getSchemeAndHttpHost(), '/').'/storage/'.ltrim($bannerPath, '/')
             : null;
         $distance = $this->getAttribute('distance_miles');
+        $isFavorite = (bool) ($this->getAttribute('is_favorite') ?? false);
 
         return [
             'id' => (string) $this->id,
@@ -58,6 +59,7 @@ class MatchResource extends JsonResource
             'banner_image_url' => $bannerImageUrl,
             'is_featured' => $this->is_featured,
             'featured_order' => $this->featured_order,
+            'is_favorite' => $isFavorite,
             'location' => $this->location_address,
             'location_address' => $this->location_address,
             'venue_name' => $this->venue_name,
