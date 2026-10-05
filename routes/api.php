@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\MatchChatController;
 use App\Http\Controllers\Api\MatchCompletionController;
 use App\Http\Controllers\Api\MatchController;
+use App\Http\Controllers\Api\MatchFavoriteController;
 use App\Http\Controllers\Api\MatchInvitationController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProfileController;
@@ -61,11 +62,14 @@ Route::middleware(['auth:sanctum', 'account.active'])->group(function (): void {
 
     Route::get('/matches', [MatchController::class, 'index']);
     Route::get('/my-matches', [MatchInvitationController::class, 'myMatches']);
+    Route::get('/favorites', [MatchFavoriteController::class, 'index']);
     Route::post('/matches', [MatchController::class, 'store']);
     Route::get('/matches/{match}', [MatchController::class, 'show']);
     Route::get('/matches/{match}/people', [MatchController::class, 'people']);
     Route::put('/matches/{match}/schedule', [MatchController::class, 'updateSchedule']);
     Route::post('/matches/{match}/join', [MatchController::class, 'join']);
+    Route::post('/matches/{match}/favorite', [MatchFavoriteController::class, 'store']);
+    Route::delete('/matches/{match}/favorite', [MatchFavoriteController::class, 'destroy']);
     Route::post('/matches/{match}/leave', [MatchController::class, 'leave']);
     Route::post('/matches/{match}/cancel', [MatchController::class, 'cancel']);
     Route::get('/matches/{match}/completion', [MatchCompletionController::class, 'show']);
@@ -87,6 +91,8 @@ Route::middleware(['auth:sanctum', 'account.active'])->group(function (): void {
     Route::delete('/device-tokens', [DeviceTokenController::class, 'destroy']);
 
     Route::get('/safety', [UserModerationController::class, 'index']);
+    Route::get('/users/search', [UserModerationController::class, 'search'])
+        ->middleware('throttle:30,1');
     Route::post('/users/{user}/report', [UserModerationController::class, 'report']);
     Route::post('/users/{user}/block', [UserModerationController::class, 'block']);
     Route::delete('/users/{user}/block', [UserModerationController::class, 'unblock']);
