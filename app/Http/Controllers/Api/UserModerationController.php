@@ -100,8 +100,9 @@ class UserModerationController extends Controller
 
         $users = User::query()
             ->withCount('joinedMatches')
-            ->whereKeyNot($currentUser->id)
+            ->where('id', '!=', $currentUser->id)
             ->where('is_suspended', false)
+            ->whereNotIn('id', $blockedIds)
             ->where(function ($query) use ($like): void {
                 $query->where('name', 'like', $like)
                     ->orWhere('email', 'like', $like)
@@ -116,9 +117,7 @@ class UserModerationController extends Controller
                 ->map(fn (User $user): array => $this->userData(
                     $request,
                     $user,
-                ) + [
-                    'is_blocked' => $blockedIds->contains($user->id),
-                ])
+                ))
                 ->values(),
         ]);
     }
