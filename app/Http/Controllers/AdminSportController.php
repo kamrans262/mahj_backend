@@ -3,103 +3,125 @@
 namespace App\Http\Controllers;
 
 use App\Models\Sport;
+use App\Models\SportBannerImage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class AdminSportController extends Controller
 {
+    private const SPORT_SLUG = 'mah-jongg';
+
     private const ICON_KEYS = [
-        'football',
-        'basketball',
-        'baseball',
-        'soccer',
-        'tennis',
-        'volleyball',
-        'hockey',
-        'pickleball',
-        'golf',
-        'softball',
-        'lacrosse',
         'generic',
     ];
 
     public function index(): View
     {
         return view('admin.sports.index', [
-            'sports' => Sport::query()->orderBy('sort_order')->orderBy('name')->get(),
+            'sports' => Sport::query()
+                ->with('bannerImages')
+                ->where('slug', self::SPORT_SLUG)
+                ->orderBy('sort_order')
+                ->get(),
             'iconKeys' => self::ICON_KEYS,
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:100'],
-            'icon_key' => ['required', Rule::in(self::ICON_KEYS)],
-            'sort_order' => ['required', 'integer', 'min:0', 'max:65535'],
-            'banner_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-        ]);
-
-        $slug = Str::slug($validated['name']);
-
-        if ($slug === '' || Sport::query()->where('slug', $slug)->exists()) {
-            return back()->withErrors([
-                'name' => 'Use a unique sport name.',
-            ])->withInput();
+        $existing = Sport::query()->where('slug', self::SPORT_SLUG)->first();
+        if ($existing !== null) {
+            return back()->with('status', 'Mah Jongg is already configured.');
         }
 
-        $bannerPath = $request->file('banner_image')?->store('sports/banners', 'public');
+        $validated = $this->validatedSport($request);
 
-        Sport::query()->create([
-            'name' => trim($validated['name']),
-            'slug' => $slug,
-            'icon_key' => $validated['icon_key'],
-            'banner_image_path' => $bannerPath,
+        $sport = Sport::query()->create([
+            'name' => 'Mah Jongg',
+            'slug' => self::SPORT_SLUG,
+            'icon_key' => 'generic',
             'sort_order' => $validated['sort_order'],
             'is_active' => true,
         ]);
 
-        return back()->with('status', 'Sport added.');
+        $this->storeBannerImages($request, $sport);
+
+        return back()->with('status', 'Mah Jongg configured.');
     }
 
     public function update(Request $request, Sport $sport): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:100'],
-            'icon_key' => ['required', Rule::in(self::ICON_KEYS)],
-            'sort_order' => ['required', 'integer', 'min:0', 'max:65535'],
-            'is_active' => ['nullable', 'boolean'],
-            'banner_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-            'remove_banner' => ['nullable', 'boolean'],
-        ]);
-
-        $bannerPath = $sport->banner_image_path;
-
-        if ($request->boolean('remove_banner') && $bannerPath !== null) {
-            Storage::disk('public')->delete($bannerPath);
-            $bannerPath = null;
+        if ($sport->slug !== self::SPORT_SLUG) {
+            abort(404);
         }
 
-        if ($request->hasFile('banner_image')) {
-            if ($bannerPath !== null) {
-                Storage::disk('public')->delete($bannerPath);
+        $validated = $this->validatedSport($request);
+
+        $removeIds = collect($validated['remove_banner_ids'] ?? [])
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($removeIds->isNotEmpty()) {
+            $images = SportBannerImage::query()
+                ->where('sport_id', $sport->id)
+                ->whereIn('id', $removeIds)
+                ->get();
+
+            foreach ($images as $image) {
+                Storage::disk('public')->delete($image->image_path);
+                $image->delete();
             }
-
-            $bannerPath = $request->file('banner_image')->store('sports/banners', 'public');
         }
+
+        $this->storeBannerImages($request, $sport);
 
         $sport->update([
-            'name' => trim($validated['name']),
-            'icon_key' => $validated['icon_key'],
-            'banner_image_path' => $bannerPath,
+            'name' => 'Mah Jongg',
+            'icon_key' => 'generic',
             'sort_order' => $validated['sort_order'],
-            'is_active' => $request->boolean('is_active'),
+            'is_active' => true,
         ]);
 
-        return back()->with('status', 'Sport updated.');
+        return back()->with('status', 'Mah Jongg settings updated.');
+    }
+
+    private function validatedSport(Request $request): array
+    {
+        return $request->validate([
+            'name' => ['nullable', Rule::in(['Mah Jongg'])],
+            'icon_key' => ['nullable', Rule::in(self::ICON_KEYS)],
+            'sort_order' => ['required', 'integer', 'min:0', 'max:65535'],
+            'banner_images' => ['nullable', 'array', 'max:20'],
+            'banner_images.*' => [
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120',
+            ],
+            'remove_banner_ids' => ['nullable', 'array'],
+            'remove_banner_ids.*' => ['integer'],
+        ]);
+    }
+
+    private function storeBannerImages(Request $request, Sport $sport): void
+    {
+        $files = $request->file('banner_images', []);
+        if (! is_array($files) || $files === []) {
+            return;
+        }
+
+        $nextOrder = ((int) $sport->bannerImages()->max('sort_order')) + 1;
+
+        foreach ($files as $file) {
+            $path = $file->store('sports/banners', 'public');
+
+            $sport->bannerImages()->create([
+                'image_path' => $path,
+                'sort_order' => $nextOrder++,
+            ]);
+        }
     }
 }
