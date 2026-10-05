@@ -29,24 +29,15 @@ class MultanMapDemoSeeder extends Seeder
             return;
         }
 
-        $sports = Sport::query()
+        $this->call(SportsCatalogSeeder::class);
+
+        $sport = Sport::query()
             ->where('is_active', true)
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->get();
+            ->where('slug', 'mah-jongg')
+            ->first();
 
-        if ($sports->isEmpty()) {
-            $this->call(SportsCatalogSeeder::class);
-
-            $sports = Sport::query()
-                ->where('is_active', true)
-                ->orderBy('sort_order')
-                ->orderBy('id')
-                ->get();
-        }
-
-        if ($sports->isEmpty()) {
-            $this->command?->warn('Multan map demo data skipped: no active sports exist.');
+        if ($sport === null) {
+            $this->command?->warn('Multan map demo data skipped: Mah Jongg is not configured.');
 
             return;
         }
@@ -88,7 +79,6 @@ class MultanMapDemoSeeder extends Seeder
         for ($index = 0; $index < self::MATCH_COUNT; $index++) {
             $matchNumber = $index + 1;
             $host = $hosts[$index % $hosts->count()];
-            $sport = $sports[$index % $sports->count()];
 
             [$latitude, $longitude] = $this->coordinatesFor($index);
 
