@@ -52,7 +52,7 @@ class MatchController extends Controller
         $query = MahjMatch::query()
             ->with(['host', 'players', 'sport'])
             ->withCount('players')
-            ->whereIn('status', ['open', 'confirmed'])
+            ->whereIn('status', ['open', 'confirmed', 'full', 'cancelled', 'completed'])
             ->where('starts_at', '>=', now()->subHours(3))
             ->whereDoesntHave(
                 'host.blockedUsers',
