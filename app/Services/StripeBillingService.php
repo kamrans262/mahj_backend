@@ -20,7 +20,7 @@ class StripeBillingService
         return filled(config('services.stripe.secret'));
     }
 
-    public function createCheckoutSession(User $user, SubscriptionPlan $plan): array
+    public function createCheckoutSession(User $user, SubscriptionPlan $plan, bool $includeTrial = true): array
     {
         $this->ensureConfigured();
 
@@ -64,7 +64,7 @@ class StripeBillingService
             ],
         ];
 
-        if ($plan->trial_days > 0) {
+        if ($includeTrial && $plan->trial_days > 0) {
             $payload['subscription_data']['trial_period_days'] = $plan->trial_days;
         }
 
