@@ -100,6 +100,26 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
+    public function favoritePlayers(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            User::class,
+            'user_favorites',
+            'user_id',
+            'favorite_user_id',
+        )->withTimestamps();
+    }
+
+    public function favoritedByUsers(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            User::class,
+            'user_favorites',
+            'favorite_user_id',
+            'user_id',
+        )->withTimestamps();
+    }
+
 
     public function sentMatchInvitations(): HasMany
     {
@@ -114,6 +134,11 @@ class User extends Authenticatable
     public function matchChatMessages(): HasMany
     {
         return $this->hasMany(MatchChatMessage::class, 'sender_user_id');
+    }
+
+    public function directChatMessages(): HasMany
+    {
+        return $this->hasMany(DirectMessage::class, 'sender_user_id');
     }
 
     public function submittedUserReports(): HasMany
