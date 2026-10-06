@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DeviceTokenController;
+use App\Http\Controllers\Api\DirectChatController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\MatchChatController;
 use App\Http\Controllers\Api\MatchCompletionController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\Api\MatchFavoriteController;
 use App\Http\Controllers\Api\MatchInvitationController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\PlayerFavoriteController;
 use App\Http\Controllers\Api\SportController;
 use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\SupportContentController;
@@ -65,6 +67,7 @@ Route::middleware(['auth:sanctum', 'account.active'])->group(function (): void {
     Route::get('/matches', [MatchController::class, 'index']);
     Route::get('/my-matches', [MatchInvitationController::class, 'myMatches']);
     Route::get('/favorites', [MatchFavoriteController::class, 'index']);
+    Route::get('/favorite-players', [PlayerFavoriteController::class, 'index']);
     Route::post('/matches', [MatchController::class, 'store']);
     Route::get('/matches/{match}', [MatchController::class, 'show']);
     Route::get('/matches/{match}/people', [MatchController::class, 'people']);
@@ -72,6 +75,9 @@ Route::middleware(['auth:sanctum', 'account.active'])->group(function (): void {
     Route::post('/matches/{match}/join', [MatchController::class, 'join']);
     Route::post('/matches/{match}/favorite', [MatchFavoriteController::class, 'store']);
     Route::delete('/matches/{match}/favorite', [MatchFavoriteController::class, 'destroy']);
+    Route::get('/users/{user}/favorite', [PlayerFavoriteController::class, 'status']);
+    Route::post('/users/{user}/favorite', [PlayerFavoriteController::class, 'store']);
+    Route::delete('/users/{user}/favorite', [PlayerFavoriteController::class, 'destroy']);
     Route::post('/matches/{match}/leave', [MatchController::class, 'leave']);
     Route::post('/matches/{match}/cancel', [MatchController::class, 'cancel']);
     Route::get('/matches/{match}/completion', [MatchCompletionController::class, 'show']);
@@ -79,6 +85,10 @@ Route::middleware(['auth:sanctum', 'account.active'])->group(function (): void {
     Route::post('/matches/{match}/scores', [MatchCompletionController::class, 'submitScores']);
     Route::get('/matches/{match}/chat', [MatchChatController::class, 'index']);
     Route::post('/matches/{match}/chat/messages', [MatchChatController::class, 'send']);
+    Route::get('/direct-chats', [DirectChatController::class, 'index']);
+    Route::post('/direct-chats/{user}', [DirectChatController::class, 'start']);
+    Route::get('/direct-chats/{conversation}', [DirectChatController::class, 'show']);
+    Route::post('/direct-chats/{conversation}/messages', [DirectChatController::class, 'send']);
     Route::get('/matches/{match}/invite-candidates', [MatchInvitationController::class, 'candidates']);
     Route::post('/matches/{match}/invitations', [MatchInvitationController::class, 'send']);
     Route::post('/invitations/{invitation}/accept', [MatchInvitationController::class, 'accept']);
