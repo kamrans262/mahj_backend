@@ -55,6 +55,13 @@ class StripeBillingService
             'metadata' => [
                 'user_id' => (string) $user->id,
                 'plan_id' => (string) $plan->id,
+                ...(
+                    ! $includeTrial
+                    && $existing?->provider === 'stripe'
+                    && filled($existing->provider_subscription_id)
+                        ? ['replaces_subscription_id' => $existing->provider_subscription_id]
+                        : []
+                ),
             ],
             'subscription_data' => [
                 'metadata' => [
@@ -160,6 +167,16 @@ class StripeBillingService
             ->json();
     }
 
+    public function cancelImmediately(string $subscriptionId): array
+    {
+        $this->ensureConfigured();
+
+        return $this->request()
+            ->delete(self::API_BASE.'/subscriptions/'.urlencode($subscriptionId))
+            ->throw()
+            ->json();
+    }
+
     public function syncRemoteSubscription(array $remote): ?UserSubscription
     {
         $subscriptionId = $remote['id'] ?? null;
@@ -180,6 +197,18 @@ class StripeBillingService
             $local = UserSubscription::query()
                 ->where('user_id', (int) $userId)
                 ->first();
+        }
+
+        $incomingStatus = $this->normalizeStatus((string) ($remote['status'] ?? 'active'));
+        if (
+            $local !== null
+            && filled($local->provider_subscription_id)
+            && is_string($subscriptionId)
+            && $subscriptionId !== ''
+            && $local->provider_subscription_id !== $subscriptionId
+            && $incomingStatus === 'canceled'
+        ) {
+            return $local;
         }
 
         $plan = null;
@@ -204,7 +233,7 @@ class StripeBillingService
 
         $attributes = [
             'subscription_plan_id' => $plan->id,
-            'status' => $this->normalizeStatus((string) ($remote['status'] ?? 'active')),
+            'status' => $incomingStatus,
             'provider' => 'stripe',
             'provider_customer_id' => $customerId,
             'provider_subscription_id' => $subscriptionId,
