@@ -34,6 +34,10 @@ return [
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
     ],
 
+    'google_sign_in' => [
+        'client_id' => env('GOOGLE_SIGN_IN_CLIENT_ID'),
+    ],
+
     'google_maps' => [
         'server_key' => env('GOOGLE_MAPS_SERVER_KEY'),
         'geocoding_url' => env(
