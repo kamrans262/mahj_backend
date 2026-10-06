@@ -167,6 +167,21 @@ class SubscriptionController extends Controller
         }
 
         $remote = $this->stripe->retrieveSubscription($subscriptionId);
+
+        $replacementSubscriptionId = data_get(
+            $session,
+            'metadata.replaces_subscription_id',
+        );
+
+        if (
+            ($remote['status'] ?? null) === 'active'
+            && is_string($replacementSubscriptionId)
+            && $replacementSubscriptionId !== ''
+            && $replacementSubscriptionId !== $subscriptionId
+        ) {
+            $this->stripe->cancelImmediately($replacementSubscriptionId);
+        }
+
         $subscription = $this->stripe->syncRemoteSubscription($remote);
         if ($subscription !== null) {
             $this->notifications->subscriptionUpdated($subscription);
