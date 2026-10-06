@@ -26,7 +26,7 @@ class UserResource extends JsonResource
             'completed_match_count' => $this->resource->joinedMatches()->where('status', 'completed')->count(),
             'unread_notification_count' => $this->resource->userNotifications()->whereNull('read_at')->count(),
             'unread_message_count' => 0,
-            'google_connected' => false,
+            'google_connected' => filled($this->google_id),
             'apple_connected' => false,
         ];
     }
