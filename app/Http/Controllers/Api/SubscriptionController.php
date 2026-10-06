@@ -89,6 +89,52 @@ class SubscriptionController extends Controller
         ], 201);
     }
 
+    public function startPayment(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'plan_id' => ['required', 'integer', 'exists:subscription_plans,id'],
+        ]);
+
+        $plan = SubscriptionPlan::query()
+            ->whereKey($validated['plan_id'])
+            ->where('is_active', true)
+            ->firstOrFail();
+
+        $existing = UserSubscription::query()
+            ->where('user_id', $request->user()->id)
+            ->first();
+
+        if (
+            $existing?->provider === 'stripe'
+            && $existing->status === 'active'
+            && ! $existing->cancel_at_period_end
+        ) {
+            throw ValidationException::withMessages([
+                'subscription' => ['You already have an active paid subscription.'],
+            ]);
+        }
+
+        if (! $this->stripe->isConfigured()) {
+            throw ValidationException::withMessages([
+                'subscription' => ['Stripe billing is not configured yet.'],
+            ]);
+        }
+
+        $session = $this->stripe->createCheckoutSession(
+            $request->user(),
+            $plan,
+            includeTrial: false,
+        );
+
+        return response()->json([
+            'message' => 'Stripe checkout is ready.',
+            'requires_checkout' => true,
+            'checkout_url' => $session['url'],
+            'checkout_session_id' => $session['id'],
+            ...$this->stateFor($request->user()),
+        ], 201);
+    }
+
     public function confirmCheckout(Request $request): JsonResponse
     {
         $validated = $request->validate([
