@@ -97,6 +97,42 @@ class SubscriptionTest extends TestCase
         });
     }
 
+    public function test_first_paid_monthly_checkout_does_not_apply_free_trial(): void
+    {
+        config()->set('services.stripe.secret', 'sk_test_fake');
+
+        Http::fake([
+            'api.stripe.com/v1/checkout/sessions' => Http::response([
+                'id' => 'cs_test_paid_123',
+                'url' => 'https://checkout.stripe.com/c/pay/cs_test_paid_123',
+            ]),
+        ]);
+
+        $user = User::factory()->create();
+        $plan = $this->createPlan();
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/subscription/start-payment', ['plan_id' => $plan->id])
+            ->assertCreated()
+            ->assertJsonPath('requires_checkout', true)
+            ->assertJsonPath('checkout_session_id', 'cs_test_paid_123');
+
+        $this->assertDatabaseMissing('user_subscriptions', ['user_id' => $user->id]);
+
+        Http::assertSent(function ($request) use ($user, $plan): bool {
+            if ($request->url() !== 'https://api.stripe.com/v1/checkout/sessions') {
+                return false;
+            }
+
+            parse_str($request->body(), $body);
+
+            return ($body['mode'] ?? null) === 'subscription'
+                && ($body['client_reference_id'] ?? null) === (string) $user->id
+                && data_get($body, 'metadata.plan_id') === (string) $plan->id
+                && data_get($body, 'subscription_data.trial_period_days') === null;
+        });
+    }
+
     public function test_valid_stripe_subscription_webhook_syncs_entitlement(): void
     {
         config()->set('services.stripe.secret', 'sk_test_fake');
