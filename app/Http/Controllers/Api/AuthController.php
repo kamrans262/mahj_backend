@@ -7,6 +7,7 @@ use App\Http\Resources\UserResource;
 use App\Models\PendingRegistration;
 use App\Models\User;
 use App\Services\AuthOtpService;
+use App\Services\GoogleIdentityService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,8 +17,10 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    public function __construct(private readonly AuthOtpService $otpService)
-    {
+    public function __construct(
+        private readonly AuthOtpService $otpService,
+        private readonly GoogleIdentityService $googleIdentityService,
+    ) {
     }
 
     public function requestRegistrationOtp(Request $request): JsonResponse
@@ -160,6 +163,103 @@ class AuthController extends Controller
             'token' => $user->createToken('mobile')->plainTextToken,
             'user' => (new UserResource($user))->resolve($request),
         ]);
+    }
+
+    public function google(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'id_token' => ['required', 'string', 'min:100'],
+        ]);
+
+        $identity = $this->googleIdentityService->verify($validated['id_token']);
+
+        $user = DB::transaction(function () use ($identity): User {
+            $byGoogleId = User::query()
+                ->where('google_id', $identity['id'])
+                ->lockForUpdate()
+                ->first();
+
+            if ($byGoogleId !== null) {
+                return $this->syncGoogleUser($byGoogleId, $identity);
+            }
+
+            $byEmail = User::query()
+                ->where('email', $identity['email'])
+                ->lockForUpdate()
+                ->first();
+
+            if ($byEmail !== null) {
+                if (
+                    filled($byEmail->google_id)
+                    && $byEmail->google_id !== $identity['id']
+                ) {
+                    throw ValidationException::withMessages([
+                        'email' => ['This email is already linked to another Google account.'],
+                    ]);
+                }
+
+                return $this->syncGoogleUser($byEmail, $identity);
+            }
+
+            $name = $identity['name'] !== ''
+                ? $identity['name']
+                : Str::before($identity['email'], '@');
+
+            $user = User::query()->create([
+                'name' => $name,
+                'email' => $identity['email'],
+                'google_id' => $identity['id'],
+                'password' => Str::random(64),
+                'avatar_path' => $identity['picture'] !== ''
+                    ? $identity['picture']
+                    : null,
+                'email_verified_at' => now(),
+            ]);
+
+            PendingRegistration::query()
+                ->where('email', $identity['email'])
+                ->delete();
+
+            return $user;
+        });
+
+        if ($user->is_suspended) {
+            throw ValidationException::withMessages([
+                'email' => ['This account has been suspended. Contact support for help.'],
+            ]);
+        }
+
+        return response()->json([
+            'token' => $user->createToken('mobile')->plainTextToken,
+            'user' => (new UserResource($user))->resolve($request),
+        ]);
+    }
+
+    private function syncGoogleUser(User $user, array $identity): User
+    {
+        $updates = [
+            'google_id' => $identity['id'],
+        ];
+
+        if ($user->email_verified_at === null) {
+            $updates['email_verified_at'] = now();
+        }
+
+        if (blank($user->avatar_path) && $identity['picture'] !== '') {
+            $updates['avatar_path'] = $identity['picture'];
+        }
+
+        if (blank($user->name) && $identity['name'] !== '') {
+            $updates['name'] = $identity['name'];
+        }
+
+        $user->forceFill($updates)->save();
+
+        PendingRegistration::query()
+            ->where('email', $identity['email'])
+            ->delete();
+
+        return $user->refresh();
     }
 
     public function requestPasswordResetOtp(Request $request): JsonResponse
