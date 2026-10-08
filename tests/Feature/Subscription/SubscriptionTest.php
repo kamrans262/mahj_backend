@@ -215,6 +215,32 @@ class SubscriptionTest extends TestCase
             ->assertJsonPath('subscription.status', 'trialing');
     }
 
+    public function test_expired_trial_with_valid_plan_period_shows_plan_expiry_text(): void
+    {
+        $user = User::factory()->create();
+        $plan = $this->createPlan();
+        $periodEnd = now()->addDays(20);
+
+        UserSubscription::query()->create([
+            'user_id' => $user->id,
+            'subscription_plan_id' => $plan->id,
+            'status' => 'trialing',
+            'provider' => 'stripe',
+            'trial_ends_at' => now()->subDay(),
+            'current_period_ends_at' => $periodEnd,
+            'cancel_at_period_end' => false,
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/subscription')
+            ->assertOk()
+            ->assertJsonPath('current_plan.id', (string) $plan->id)
+            ->assertJsonPath(
+                'current_plan.renewal_text',
+                'Your plan renews on '.$periodEnd->format('M j, Y'),
+            );
+    }
+
     public function test_active_monthly_plan_is_current_and_reports_renewal_date(): void
     {
         $user = User::factory()->create();
