@@ -296,7 +296,8 @@ class SubscriptionController extends Controller
             ->where('user_id', $user->id)
             ->first();
 
-        $currentPlan = $subscription?->plan;
+        $hasCurrentEntitlement = $this->hasCurrentEntitlement($subscription);
+        $currentPlan = $hasCurrentEntitlement ? $subscription?->plan : null;
 
         return [
             'current_plan' => $currentPlan
@@ -304,11 +305,11 @@ class SubscriptionController extends Controller
                 : [
                     'id' => 'free',
                     'name' => 'Free',
-                    'description' => 'No active subscription',
+                    'description' => 'No active paid subscription',
                     'price_label' => '$0.00',
                     'renewal_text' => null,
-                    'status_text' => 'Inactive',
-                    'info_text' => 'Choose a plan to unlock Mahj premium features.',
+                    'status_text' => 'Active',
+                    'info_text' => null,
                     'is_current' => true,
                     'is_selectable' => false,
                     'trial_days' => 0,
@@ -332,6 +333,31 @@ class SubscriptionController extends Controller
         ];
     }
 
+    private function hasCurrentEntitlement(?UserSubscription $subscription): bool
+    {
+        if ($subscription === null || ! in_array($subscription->status, ['trialing', 'active'], true)) {
+            return false;
+        }
+
+        if (
+            $subscription->status === 'trialing'
+            && $subscription->trial_ends_at !== null
+            && ! $subscription->trial_ends_at->isFuture()
+        ) {
+            return false;
+        }
+
+        if (
+            $subscription->status === 'active'
+            && $subscription->current_period_ends_at !== null
+            && ! $subscription->current_period_ends_at->isFuture()
+        ) {
+            return false;
+        }
+
+        return true;
+    }
+
     private function planPayload(
         SubscriptionPlan $plan,
         ?UserSubscription $subscription,
@@ -342,9 +368,19 @@ class SubscriptionController extends Controller
 
         if ($isCurrent && $subscription !== null) {
             if ($subscription->status === 'trialing' && $subscription->trial_ends_at !== null) {
-                $renewal = 'Trial ends on '.$subscription->trial_ends_at->format('M j, Y');
+                $daysRemaining = max(
+                    1,
+                    now()->startOfDay()->diffInDays(
+                        $subscription->trial_ends_at->copy()->startOfDay(),
+                        false,
+                    ),
+                );
+                $renewal = 'Your free trial expires in '.$daysRemaining.' '
+                    .($daysRemaining === 1 ? 'day' : 'days');
             } elseif ($subscription->current_period_ends_at !== null) {
-                $renewal = ($subscription->cancel_at_period_end ? 'Ends on ' : 'Renews on ')
+                $renewal = ($subscription->cancel_at_period_end
+                    ? 'Your plan ends on '
+                    : 'Your plan renews on ')
                     .$subscription->current_period_ends_at->format('M j, Y');
             }
         }
