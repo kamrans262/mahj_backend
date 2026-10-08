@@ -339,23 +339,15 @@ class SubscriptionController extends Controller
             return false;
         }
 
-        if (
-            $subscription->status === 'trialing'
-            && $subscription->trial_ends_at !== null
-            && ! $subscription->trial_ends_at->isFuture()
-        ) {
-            return false;
+        if ($subscription->trial_ends_at?->isFuture()) {
+            return true;
         }
 
-        if (
-            $subscription->status === 'active'
-            && $subscription->current_period_ends_at !== null
-            && ! $subscription->current_period_ends_at->isFuture()
-        ) {
-            return false;
+        if ($subscription->current_period_ends_at !== null) {
+            return $subscription->current_period_ends_at->isFuture();
         }
 
-        return true;
+        return $subscription->status === 'active';
     }
 
     private function planPayload(
@@ -367,7 +359,7 @@ class SubscriptionController extends Controller
         $renewal = null;
 
         if ($isCurrent && $subscription !== null) {
-            if ($subscription->status === 'trialing' && $subscription->trial_ends_at !== null) {
+            if ($subscription->trial_ends_at?->isFuture()) {
                 $daysRemaining = (int) max(
                     1,
                     now()->startOfDay()->diffInDays(
