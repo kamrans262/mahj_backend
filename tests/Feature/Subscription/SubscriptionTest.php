@@ -191,6 +191,117 @@ class SubscriptionTest extends TestCase
         $this->assertSame($plan->id, $subscription->subscription_plan_id);
     }
 
+    public function test_trialing_monthly_plan_is_current_and_reports_remaining_trial_days(): void
+    {
+        $user = User::factory()->create();
+        $plan = $this->createPlan();
+
+        UserSubscription::query()->create([
+            'user_id' => $user->id,
+            'subscription_plan_id' => $plan->id,
+            'status' => 'trialing',
+            'provider' => 'stripe',
+            'trial_ends_at' => now()->addDays(5),
+            'current_period_ends_at' => now()->addDays(5),
+            'cancel_at_period_end' => false,
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/subscription')
+            ->assertOk()
+            ->assertJsonPath('current_plan.id', (string) $plan->id)
+            ->assertJsonPath('current_plan.name', 'Monthly Plan')
+            ->assertJsonPath('current_plan.renewal_text', 'Your free trial expires in 5 days')
+            ->assertJsonPath('subscription.status', 'trialing');
+    }
+
+    public function test_active_monthly_plan_is_current_and_reports_renewal_date(): void
+    {
+        $user = User::factory()->create();
+        $plan = $this->createPlan();
+        $periodEnd = now()->addDays(30);
+
+        UserSubscription::query()->create([
+            'user_id' => $user->id,
+            'subscription_plan_id' => $plan->id,
+            'status' => 'active',
+            'provider' => 'stripe',
+            'current_period_ends_at' => $periodEnd,
+            'cancel_at_period_end' => false,
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/subscription')
+            ->assertOk()
+            ->assertJsonPath('current_plan.id', (string) $plan->id)
+            ->assertJsonPath(
+                'current_plan.renewal_text',
+                'Your plan renews on '.$periodEnd->format('M j, Y'),
+            );
+    }
+
+    public function test_scheduled_cancellation_keeps_monthly_current_until_period_end(): void
+    {
+        $user = User::factory()->create();
+        $plan = $this->createPlan();
+        $periodEnd = now()->addDays(12);
+
+        UserSubscription::query()->create([
+            'user_id' => $user->id,
+            'subscription_plan_id' => $plan->id,
+            'status' => 'active',
+            'provider' => 'stripe',
+            'current_period_ends_at' => $periodEnd,
+            'cancel_at_period_end' => true,
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/subscription')
+            ->assertOk()
+            ->assertJsonPath('current_plan.id', (string) $plan->id)
+            ->assertJsonPath(
+                'current_plan.renewal_text',
+                'Your plan ends on '.$periodEnd->format('M j, Y'),
+            );
+    }
+
+    public function test_canceled_or_expired_subscription_returns_free_as_current_plan(): void
+    {
+        $plan = $this->createPlan();
+
+        $canceledUser = User::factory()->create();
+        UserSubscription::query()->create([
+            'user_id' => $canceledUser->id,
+            'subscription_plan_id' => $plan->id,
+            'status' => 'canceled',
+            'provider' => 'stripe',
+            'current_period_ends_at' => now()->addDays(3),
+            'cancel_at_period_end' => true,
+        ]);
+
+        $this->actingAs($canceledUser, 'sanctum')
+            ->getJson('/api/subscription')
+            ->assertOk()
+            ->assertJsonPath('current_plan.id', 'free')
+            ->assertJsonPath('current_plan.status_text', 'Active');
+
+        $expiredUser = User::factory()->create();
+        UserSubscription::query()->create([
+            'user_id' => $expiredUser->id,
+            'subscription_plan_id' => $plan->id,
+            'status' => 'active',
+            'provider' => 'stripe',
+            'current_period_ends_at' => now()->subMinute(),
+            'cancel_at_period_end' => true,
+        ]);
+
+        $this->actingAs($expiredUser, 'sanctum')
+            ->getJson('/api/subscription')
+            ->assertOk()
+            ->assertJsonPath('current_plan.id', 'free')
+            ->assertJsonPath('current_plan.status_text', 'Active');
+    }
+
     public function test_suspended_user_cannot_use_authenticated_api(): void
     {
         $user = User::factory()->create(['is_suspended' => true]);
