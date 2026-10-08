@@ -368,7 +368,7 @@ class SubscriptionController extends Controller
 
         if ($isCurrent && $subscription !== null) {
             if ($subscription->status === 'trialing' && $subscription->trial_ends_at !== null) {
-                $daysRemaining = max(
+                $daysRemaining = (int) max(
                     1,
                     now()->startOfDay()->diffInDays(
                         $subscription->trial_ends_at->copy()->startOfDay(),
