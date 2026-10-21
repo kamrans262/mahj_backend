@@ -49,6 +49,10 @@ class PlayerProfileController extends Controller
             ->whereHas('players', fn (Builder $query): Builder => $query->whereKey($viewer->id))
             ->whereHas('players', fn (Builder $query): Builder => $query->whereKey($user->id))
             ->where('status', '!=', 'cancelled')
+            ->whereDoesntHave(
+                'host.blockedUsers',
+                fn (Builder $query): Builder => $query->where('blocked_user_id', $viewer->id),
+            )
             ->orderByDesc('starts_at')
             ->paginate($perPage, ['*'], 'page', $page);
 
