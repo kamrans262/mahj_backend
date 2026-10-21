@@ -204,6 +204,7 @@ class SubscriptionTest extends TestCase
             'subscription_plan_id' => $plan->id,
             'status' => 'trialing',
             'provider' => 'stripe',
+            'provider_subscription_id' => 'sub_fixture_verified',
             'trial_ends_at' => now()->addDays(5),
             'current_period_ends_at' => now()->addDays(5),
             'cancel_at_period_end' => false,
@@ -218,7 +219,7 @@ class SubscriptionTest extends TestCase
             ->assertJsonPath('subscription.status', 'trialing');
     }
 
-    public function test_expired_trial_with_valid_plan_period_shows_plan_expiry_text(): void
+    public function test_expired_trial_does_not_grant_access_despite_future_period(): void
     {
         $user = User::factory()->create();
         $plan = $this->createPlan();
@@ -229,6 +230,7 @@ class SubscriptionTest extends TestCase
             'subscription_plan_id' => $plan->id,
             'status' => 'trialing',
             'provider' => 'stripe',
+            'provider_subscription_id' => 'sub_fixture_verified',
             'trial_ends_at' => now()->subDay(),
             'current_period_ends_at' => $periodEnd,
             'cancel_at_period_end' => false,
@@ -237,11 +239,8 @@ class SubscriptionTest extends TestCase
         $this->actingAs($user, 'sanctum')
             ->getJson('/api/subscription')
             ->assertOk()
-            ->assertJsonPath('current_plan.id', (string) $plan->id)
-            ->assertJsonPath(
-                'current_plan.renewal_text',
-                'Your plan renews on '.$periodEnd->format('M j, Y'),
-            );
+            ->assertJsonPath('current_plan.id', 'free')
+            ->assertJsonPath('has_access', false);
     }
 
     public function test_active_monthly_plan_is_current_and_reports_renewal_date(): void
@@ -255,6 +254,7 @@ class SubscriptionTest extends TestCase
             'subscription_plan_id' => $plan->id,
             'status' => 'active',
             'provider' => 'stripe',
+            'provider_subscription_id' => 'sub_fixture_verified',
             'current_period_ends_at' => $periodEnd,
             'cancel_at_period_end' => false,
         ]);
@@ -280,6 +280,7 @@ class SubscriptionTest extends TestCase
             'subscription_plan_id' => $plan->id,
             'status' => 'active',
             'provider' => 'stripe',
+            'provider_subscription_id' => 'sub_fixture_verified',
             'current_period_ends_at' => $periodEnd,
             'cancel_at_period_end' => true,
         ]);
@@ -304,6 +305,7 @@ class SubscriptionTest extends TestCase
             'subscription_plan_id' => $plan->id,
             'status' => 'canceled',
             'provider' => 'stripe',
+            'provider_subscription_id' => 'sub_fixture_verified',
             'current_period_ends_at' => now()->addDays(3),
             'cancel_at_period_end' => true,
         ]);
@@ -320,6 +322,7 @@ class SubscriptionTest extends TestCase
             'subscription_plan_id' => $plan->id,
             'status' => 'active',
             'provider' => 'stripe',
+            'provider_subscription_id' => 'sub_fixture_verified',
             'current_period_ends_at' => now()->subMinute(),
             'cancel_at_period_end' => true,
         ]);
