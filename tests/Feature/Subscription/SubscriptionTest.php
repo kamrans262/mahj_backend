@@ -337,6 +337,39 @@ class SubscriptionTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_new_stripe_trial_checkout_uses_nineteen_ninety_nine_and_keeps_fourteen_days(): void
+    {
+        config()->set('services.stripe.secret', 'sk_test_fake');
+        Http::fake([
+            'api.stripe.com/v1/checkout/sessions' => Http::response([
+                'id' => 'cs_test_pricing_1999',
+                'url' => 'https://checkout.stripe.com/c/pay/cs_test_pricing_1999',
+            ]),
+        ]);
+
+        $plan = SubscriptionPlan::query()->where('slug', 'monthly')->firstOrFail();
+        $user = User::factory()->create();
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/subscription/start-trial', ['plan_id' => $plan->id])
+            ->assertCreated()
+            ->assertJsonPath('requires_checkout', true);
+
+        Http::assertSent(function ($request): bool {
+            if ($request->url() !== 'https://api.stripe.com/v1/checkout/sessions') {
+                return false;
+            }
+
+            parse_str($request->body(), $payload);
+
+            return data_get($payload, 'line_items.0.price') === null
+                && data_get($payload, 'line_items.0.price_data.currency') === 'usd'
+                && data_get($payload, 'line_items.0.price_data.unit_amount') === '1999'
+                && data_get($payload, 'line_items.0.price_data.recurring.interval') === 'month'
+                && data_get($payload, 'subscription_data.trial_period_days') === '14';
+        });
+    }
+
     public function test_default_monthly_plan_is_nineteen_ninety_nine_with_fourteen_day_trial(): void
     {
         config()->set('services.stripe.secret', null);
