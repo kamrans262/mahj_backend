@@ -337,6 +337,23 @@ class SubscriptionTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_default_monthly_plan_is_nineteen_ninety_nine_with_fourteen_day_trial(): void
+    {
+        config()->set('services.stripe.secret', null);
+        $plan = \App\Models\SubscriptionPlan::query()->where('slug', 'monthly')->firstOrFail();
+
+        $this->assertSame(1999, $plan->price_cents);
+        $this->assertSame(14, $plan->trial_days);
+        $this->assertNull($plan->stripe_price_id);
+
+        $user = User::factory()->create();
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/subscription')
+            ->assertOk()
+            ->assertJsonPath('available_plans.0.price_label', '$19.99')
+            ->assertJsonPath('available_plans.0.trial_days', 14);
+    }
+
     private function createPlan(): SubscriptionPlan
     {
         return SubscriptionPlan::query()->create([

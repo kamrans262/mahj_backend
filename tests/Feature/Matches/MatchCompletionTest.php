@@ -173,6 +173,45 @@ class MatchCompletionTest extends TestCase
         $this->assertTrue($cancelledIds->contains((string) $cancelled->id));
     }
 
+    public function test_my_matches_past_games_includes_elapsed_games_without_auto_completion(): void
+    {
+        $host = User::factory()->create();
+        $joiner = User::factory()->create();
+
+        $pastOpen = $this->createMatch($host, startsAt: now()->subDay(), status: 'open');
+        $pastConfirmed = $this->createMatch($host, startsAt: now()->subHours(2), status: 'confirmed');
+        $futureOpen = $this->createMatch($host, startsAt: now()->addDay(), status: 'open');
+        $pastCancelled = $this->createMatch($host, startsAt: now()->subDays(2), status: 'cancelled');
+        $pastCompleted = $this->createMatch($host, startsAt: now()->subDays(3), status: 'completed');
+        $pastConfirmed->players()->attach($joiner->id, ['joined_at' => now()]);
+
+        $hostResponse = $this->actingAs($host, 'sanctum')
+            ->getJson('/api/my-matches')
+            ->assertOk();
+
+        $pastIds = collect($hostResponse->json('completed'))->pluck('id');
+        $createdIds = collect($hostResponse->json('created_by_me'))->pluck('id');
+        $cancelledIds = collect($hostResponse->json('cancelled'))->pluck('id');
+
+        $this->assertTrue($pastIds->contains((string) $pastOpen->id));
+        $this->assertTrue($pastIds->contains((string) $pastConfirmed->id));
+        $this->assertTrue($pastIds->contains((string) $pastCompleted->id));
+        $this->assertFalse($pastIds->contains((string) $pastCancelled->id));
+        $this->assertFalse($pastIds->contains((string) $futureOpen->id));
+        $this->assertTrue($createdIds->contains((string) $futureOpen->id));
+        $this->assertFalse($createdIds->contains((string) $pastOpen->id));
+        $this->assertTrue($cancelledIds->contains((string) $pastCancelled->id));
+
+        $joinedResponse = $this->actingAs($joiner, 'sanctum')
+            ->getJson('/api/my-matches')
+            ->assertOk();
+        $this->assertContains((string) $pastConfirmed->id, collect($joinedResponse->json('completed'))->pluck('id')->all());
+        $this->assertNotContains((string) $pastConfirmed->id, collect($joinedResponse->json('upcoming'))->pluck('id')->all());
+
+        $this->assertSame('open', $pastOpen->refresh()->status);
+        $this->assertSame('confirmed', $pastConfirmed->refresh()->status);
+    }
+
     private function createMatch(
         User $host,
         \DateTimeInterface $startsAt,

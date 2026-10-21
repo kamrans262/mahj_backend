@@ -59,7 +59,7 @@ class MatchInvitationController extends Controller
                 fn (Builder $query): Builder => $query->where('blocked_user_id', $user->id),
             )
             ->whereHas('players', fn (Builder $query): Builder => $query->whereKey($user->id))
-            ->where('starts_at', '>=', now()->subHours(3))
+            ->where('starts_at', '>=', now())
             ->whereNotIn('status', ['cancelled', 'completed'])
             ->orderBy('starts_at')
             ->simplePaginate($perPage, ['*'], 'upcoming_page', $upcomingPage);
@@ -69,13 +69,22 @@ class MatchInvitationController extends Controller
             ->withCount('players')
             ->where('host_user_id', $user->id)
             ->whereNotIn('status', ['cancelled', 'completed'])
+            ->where('starts_at', '>=', now())
             ->orderByDesc('starts_at')
             ->simplePaginate($perPage, ['*'], 'created_page', $createdPage);
 
         $completedPaginator = MahjMatch::query()
             ->with(['host', 'players', 'sport'])
             ->withCount('players')
-            ->where('status', 'completed')
+            ->where(function (Builder $query): void {
+                // Past Games includes games after their start time even
+                // when the host has not explicitly marked them completed.
+                $query->where('status', 'completed')
+                    ->orWhere(function (Builder $query): void {
+                        $query->where('starts_at', '<', now())
+                            ->where('status', '!=', 'cancelled');
+                    });
+            })
             ->where(function (Builder $query) use ($user): void {
                 $query->where('host_user_id', $user->id)
                     ->orWhereHas('players', fn (Builder $query): Builder => $query->whereKey($user->id));
@@ -113,7 +122,7 @@ class MatchInvitationController extends Controller
             ->where('status', 'pending')
             ->whereHas('match', function (Builder $query) use ($user): void {
                 $query->whereNotIn('status', ['cancelled', 'completed'])
-                    ->where('starts_at', '>=', now()->subHours(3))
+                    ->where('starts_at', '>=', now())
                     ->whereDoesntHave(
                         'host.blockedUsers',
                         fn (Builder $query): Builder => $query->where(
