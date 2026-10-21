@@ -65,7 +65,8 @@ class MatchCompletionController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        $this->ensureParticipant($user, $match);
+        // Score entry and every subsequent edit belong exclusively to the host.
+        $this->ensureHost($user, $match);
         $this->ensureCompleted($match);
 
         $validated = $request->validate([
@@ -80,11 +81,8 @@ class MatchCompletionController extends Controller
                 ->lockForUpdate()
                 ->findOrFail($match->id);
 
+            $this->ensureHost($user, $locked);
             $this->ensureCompleted($locked);
-
-            if ($locked->scores()->exists()) {
-                return;
-            }
 
             $playerIds = $locked->players()
                 ->orderBy('users.id')
@@ -110,21 +108,34 @@ class MatchCompletionController extends Controller
             }
 
             foreach ($submitted as $score) {
-                MatchScore::query()->create([
-                    'match_id' => $locked->id,
-                    'player_user_id' => $score['player_id'],
-                    'score' => $score['score'],
-                    'submitted_by_user_id' => $user->id,
-                ]);
+                // The (match, player) unique key is preserved. Overwrite only
+                // that player's score; the host may correct results any time.
+                MatchScore::query()->updateOrCreate(
+                    [
+                        'match_id' => $locked->id,
+                        'player_user_id' => $score['player_id'],
+                    ],
+                    [
+                        'score' => $score['score'],
+                        'submitted_by_user_id' => $user->id,
+                    ],
+                );
             }
         });
 
         $fresh = MahjMatch::query()->findOrFail($match->id);
 
         return response()->json([
-            'message' => 'Scores submitted successfully.',
+            'message' => 'Scores saved successfully.',
             ...$this->payload($request, $fresh),
         ]);
+    }
+
+    private function ensureHost(User $user, MahjMatch $match): void
+    {
+        if ($match->host_user_id !== $user->id) {
+            abort(403, 'Only the match host can submit or edit scores.');
+        }
     }
 
     private function ensureParticipant(User $user, MahjMatch $match): void
@@ -158,10 +169,7 @@ class MatchCompletionController extends Controller
 
         /** @var User|null $user */
         $user = $request->user();
-        $isParticipant = $user !== null && (
-            $match->host_user_id === $user->id ||
-            $match->players->contains('id', $user->id)
-        );
+        $isHost = $user !== null && $match->host_user_id === $user->id;
 
         return [
             'match' => (new MatchResource($match))->resolve($request),
@@ -176,7 +184,8 @@ class MatchCompletionController extends Controller
                 ])
                 ->values(),
             'scores_submitted' => $scoresSubmitted,
-            'can_submit_scores' => $isParticipant && ! $scoresSubmitted,
+            // Can remain true after scores exist, allowing later corrections.
+            'can_submit_scores' => $isHost,
         ];
     }
 }

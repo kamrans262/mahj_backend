@@ -42,7 +42,7 @@ class MatchCompletionTest extends TestCase
             ->assertJsonValidationErrors('match');
     }
 
-    public function test_participant_can_submit_scores_once_for_every_match_player(): void
+    public function test_only_host_can_save_and_change_scores_for_every_player(): void
     {
         $host = User::factory()->create();
         $players = User::factory()->count(2)->create();
@@ -56,7 +56,6 @@ class MatchCompletionTest extends TestCase
             $match->players()->attach($player->id, ['joined_at' => now()->subHours(3)]);
         }
 
-        $submitter = $players->first();
         $payload = [
             'scores' => [
                 ['player_id' => $host->id, 'score' => 21],
@@ -65,26 +64,68 @@ class MatchCompletionTest extends TestCase
             ],
         ];
 
+        $submitter = $players->first();
         $this->actingAs($submitter, 'sanctum')
+            ->postJson("/api/matches/{$match->id}/scores", $payload)
+            ->assertForbidden();
+        $this->assertDatabaseCount('match_scores', 0);
+
+        $this->actingAs($host, 'sanctum')
             ->postJson("/api/matches/{$match->id}/scores", $payload)
             ->assertOk()
             ->assertJsonPath('scores_submitted', true)
-            ->assertJsonPath('can_submit_scores', false)
+            ->assertJsonPath('can_submit_scores', true)
             ->assertJsonCount(3, 'players');
 
         $this->assertDatabaseHas('match_scores', [
             'match_id' => $match->id,
             'player_user_id' => $host->id,
             'score' => 21,
-            'submitted_by_user_id' => $submitter->id,
+            'submitted_by_user_id' => $host->id,
         ]);
 
+        $changedPayload = [
+            'scores' => [
+                ['player_id' => $host->id, 'score' => 30],
+                ['player_id' => $players[0]->id, 'score' => 22],
+                ['player_id' => $players[1]->id, 'score' => 16],
+            ],
+        ];
+
+        // Previous submissions do not lock a host out of correcting scores.
         $this->actingAs($host, 'sanctum')
-            ->postJson("/api/matches/{$match->id}/scores", $payload)
+            ->postJson("/api/matches/{$match->id}/scores", $changedPayload)
             ->assertOk()
-            ->assertJsonPath('scores_submitted', true);
+            ->assertJsonPath('scores_submitted', true)
+            ->assertJsonPath('can_submit_scores', true)
+            ->assertJsonPath('players.0.score', 30);
 
         $this->assertDatabaseCount('match_scores', 3);
+        $this->assertDatabaseHas('match_scores', [
+            'match_id' => $match->id,
+            'player_user_id' => $host->id,
+            'score' => 30,
+            'submitted_by_user_id' => $host->id,
+        ]);
+
+        $this->actingAs($submitter, 'sanctum')
+            ->postJson("/api/matches/{$match->id}/scores", $payload)
+            ->assertForbidden();
+
+        // Saved history is shared read-only with players.
+        $this->getJson("/api/matches/{$match->id}/completion")
+            ->assertOk()
+            ->assertJsonPath('scores_submitted', true)
+            ->assertJsonPath('can_submit_scores', false)
+            ->assertJsonPath('players.0.score', 30);
+
+        $past = $this->actingAs($host, 'sanctum')
+            ->getJson('/api/my-matches')
+            ->assertOk();
+        $this->assertContains(
+            (string) $match->id,
+            collect($past->json('completed'))->pluck('id')->all(),
+        );
     }
 
     public function test_only_match_participants_can_view_or_submit_completed_scores(): void
@@ -116,6 +157,11 @@ class MatchCompletionTest extends TestCase
             ->getJson("/api/matches/{$match->id}/completion")
             ->assertOk()
             ->assertJsonPath('match.status', 'completed')
+            ->assertJsonPath('can_submit_scores', false);
+
+        $this->actingAs($host, 'sanctum')
+            ->getJson("/api/matches/{$match->id}/completion")
+            ->assertOk()
             ->assertJsonPath('can_submit_scores', true);
     }
 
