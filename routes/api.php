@@ -65,55 +65,55 @@ Route::middleware(['auth:sanctum', 'account.active'])->group(function (): void {
     // Authentication and billing remain available without a membership.
     // Community content and actions require an active Stripe subscription/trial.
     Route::middleware('subscription.active')->group(function (): void {
-    Route::get('/sports', [SportController::class, 'index']);
-    Route::get('/locations/search', [LocationController::class, 'search'])
-        ->middleware('throttle:30,1');
+        Route::get('/sports', [SportController::class, 'index']);
+        Route::get('/locations/search', [LocationController::class, 'search'])
+            ->middleware('throttle:30,1');
 
-    Route::get('/matches', [MatchController::class, 'index']);
-    Route::get('/my-matches', [MatchInvitationController::class, 'myMatches']);
-    Route::get('/favorites', [MatchFavoriteController::class, 'index']);
-    Route::get('/favorite-players', [PlayerFavoriteController::class, 'index']);
-    Route::post('/matches', [MatchController::class, 'store']);
-    Route::get('/matches/{match}', [MatchController::class, 'show']);
-    Route::get('/matches/{match}/people', [MatchController::class, 'people']);
-    Route::put('/matches/{match}/schedule', [MatchController::class, 'updateSchedule']);
-    Route::put('/matches/{match}', [MatchController::class, 'update']);
-    Route::post('/matches/{match}/join', [MatchController::class, 'join']);
-    Route::post('/matches/{match}/favorite', [MatchFavoriteController::class, 'store']);
-    Route::delete('/matches/{match}/favorite', [MatchFavoriteController::class, 'destroy']);
-    Route::get('/users/{user}/favorite', [PlayerFavoriteController::class, 'status']);
-    Route::post('/users/{user}/favorite', [PlayerFavoriteController::class, 'store']);
-    Route::delete('/users/{user}/favorite', [PlayerFavoriteController::class, 'destroy']);
-    Route::post('/matches/{match}/leave', [MatchController::class, 'leave']);
-    Route::post('/matches/{match}/cancel', [MatchController::class, 'cancel']);
-    Route::get('/matches/{match}/completion', [MatchCompletionController::class, 'show']);
-    Route::post('/matches/{match}/complete', [MatchCompletionController::class, 'complete']);
-    Route::post('/matches/{match}/scores', [MatchCompletionController::class, 'submitScores']);
-    Route::get('/matches/{match}/chat', [MatchChatController::class, 'index']);
-    Route::post('/matches/{match}/chat/messages', [MatchChatController::class, 'send']);
-    Route::get('/direct-chats', [DirectChatController::class, 'index']);
-    Route::post('/direct-chats/{user}', [DirectChatController::class, 'start']);
-    Route::get('/direct-chats/{conversation}', [DirectChatController::class, 'show']);
-    Route::post('/direct-chats/{conversation}/messages', [DirectChatController::class, 'send']);
-    Route::get('/matches/{match}/invite-candidates', [MatchInvitationController::class, 'candidates']);
-    Route::post('/matches/{match}/invitations', [MatchInvitationController::class, 'send']);
-    Route::post('/invitations/{invitation}/accept', [MatchInvitationController::class, 'accept']);
-    Route::post('/invitations/{invitation}/decline', [MatchInvitationController::class, 'decline']);
+        Route::get('/matches', [MatchController::class, 'index']);
+        Route::get('/my-matches', [MatchInvitationController::class, 'myMatches']);
+        Route::get('/favorites', [MatchFavoriteController::class, 'index']);
+        Route::get('/favorite-players', [PlayerFavoriteController::class, 'index']);
+        Route::post('/matches', [MatchController::class, 'store']);
+        Route::get('/matches/{match}', [MatchController::class, 'show']);
+        Route::get('/matches/{match}/people', [MatchController::class, 'people']);
+        Route::put('/matches/{match}/schedule', [MatchController::class, 'updateSchedule']);
+        Route::put('/matches/{match}', [MatchController::class, 'update']);
+        Route::post('/matches/{match}/join', [MatchController::class, 'join']);
+        Route::post('/matches/{match}/favorite', [MatchFavoriteController::class, 'store']);
+        Route::delete('/matches/{match}/favorite', [MatchFavoriteController::class, 'destroy']);
+        Route::get('/users/{user}/favorite', [PlayerFavoriteController::class, 'status']);
+        Route::post('/users/{user}/favorite', [PlayerFavoriteController::class, 'store']);
+        Route::delete('/users/{user}/favorite', [PlayerFavoriteController::class, 'destroy']);
+        Route::post('/matches/{match}/leave', [MatchController::class, 'leave']);
+        Route::post('/matches/{match}/cancel', [MatchController::class, 'cancel']);
+        Route::get('/matches/{match}/completion', [MatchCompletionController::class, 'show']);
+        Route::post('/matches/{match}/complete', [MatchCompletionController::class, 'complete']);
+        Route::post('/matches/{match}/scores', [MatchCompletionController::class, 'submitScores']);
+        Route::get('/matches/{match}/chat', [MatchChatController::class, 'index']);
+        Route::post('/matches/{match}/chat/messages', [MatchChatController::class, 'send']);
+        Route::get('/direct-chats', [DirectChatController::class, 'index']);
+        Route::post('/direct-chats/{user}', [DirectChatController::class, 'start']);
+        Route::get('/direct-chats/{conversation}', [DirectChatController::class, 'show']);
+        Route::post('/direct-chats/{conversation}/messages', [DirectChatController::class, 'send']);
+        Route::get('/matches/{match}/invite-candidates', [MatchInvitationController::class, 'candidates']);
+        Route::post('/matches/{match}/invitations', [MatchInvitationController::class, 'send']);
+        Route::post('/invitations/{invitation}/accept', [MatchInvitationController::class, 'accept']);
+        Route::post('/invitations/{invitation}/decline', [MatchInvitationController::class, 'decline']);
 
-    Route::get('/notifications', [NotificationController::class, 'index']);
-    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
-    Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
-    Route::get('/notification-settings', [NotificationController::class, 'settings']);
-    Route::put('/notification-settings', [NotificationController::class, 'updateSettings']);
-    Route::post('/device-tokens', [DeviceTokenController::class, 'store']);
-    Route::delete('/device-tokens', [DeviceTokenController::class, 'destroy']);
+        Route::get('/notifications', [NotificationController::class, 'index']);
+        Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+        Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
+        Route::get('/notification-settings', [NotificationController::class, 'settings']);
+        Route::put('/notification-settings', [NotificationController::class, 'updateSettings']);
+        Route::post('/device-tokens', [DeviceTokenController::class, 'store']);
+        Route::delete('/device-tokens', [DeviceTokenController::class, 'destroy']);
 
-    Route::get('/safety', [UserModerationController::class, 'index']);
-    Route::get('/users/{user}/profile', [PlayerProfileController::class, 'show']);
-    Route::get('/users/search', [UserModerationController::class, 'search'])
-        ->middleware('throttle:30,1');
-    Route::post('/users/{user}/report', [UserModerationController::class, 'report']);
-    Route::post('/users/{user}/block', [UserModerationController::class, 'block']);
-    Route::delete('/users/{user}/block', [UserModerationController::class, 'unblock']);
+        Route::get('/safety', [UserModerationController::class, 'index']);
+        Route::get('/users/{user}/profile', [PlayerProfileController::class, 'show']);
+        Route::get('/users/search', [UserModerationController::class, 'search'])
+            ->middleware('throttle:30,1');
+        Route::post('/users/{user}/report', [UserModerationController::class, 'report']);
+        Route::post('/users/{user}/block', [UserModerationController::class, 'block']);
+        Route::delete('/users/{user}/block', [UserModerationController::class, 'unblock']);
     });
 });

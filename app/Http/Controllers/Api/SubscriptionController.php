@@ -8,16 +8,16 @@ use App\Models\User;
 use App\Models\UserSubscription;
 use App\Services\MahjNotificationService;
 use App\Services\StripeBillingService;
+use App\Services\SubscriptionEntitlementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class SubscriptionController extends Controller
 {
     public function __construct(
         private readonly StripeBillingService $stripe,
-        private readonly \App\Services\SubscriptionEntitlementService $entitlements,
+        private readonly SubscriptionEntitlementService $entitlements,
         private readonly MahjNotificationService $notifications,
     ) {
     }
