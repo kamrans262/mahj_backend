@@ -43,8 +43,13 @@ class SubscriptionController extends Controller
             ->first();
 
         if ($this->entitlements->validSubscription($existing)) {
-            throw ValidationException::withMessages([
-                'subscription' => ['You already have an active subscription.'],
+            // Idempotent when Stripe's webhook has already confirmed checkout.
+            // Returning the verified entitlement also recovers a mobile app
+            // after the browser handoff or a hot restart.
+            return response()->json([
+                'message' => 'Your subscription is already active.',
+                'requires_checkout' => false,
+                ...$this->stateFor($request->user()),
             ]);
         }
 

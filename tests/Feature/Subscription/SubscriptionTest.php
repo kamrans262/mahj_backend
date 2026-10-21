@@ -432,6 +432,33 @@ class SubscriptionTest extends TestCase
         $this->getJson('/api/my-matches')->assertOk();
     }
 
+    public function test_start_trial_with_verified_active_subscription_is_idempotent(): void
+    {
+        config()->set('services.stripe.secret', 'sk_test_fake');
+
+        $user = User::factory()->create();
+        $plan = $this->createPlan();
+        UserSubscription::query()->create([
+            'user_id' => $user->id,
+            'subscription_plan_id' => $plan->id,
+            'status' => 'trialing',
+            'provider' => 'stripe',
+            'provider_subscription_id' => 'sub_verified_123',
+            'trial_ends_at' => now()->addDays(12),
+            'current_period_ends_at' => now()->addDays(12),
+        ]);
+
+        Http::fake();
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/subscription/start-trial', ['plan_id' => $plan->id])
+            ->assertOk()
+            ->assertJsonPath('has_access', true)
+            ->assertJsonPath('requires_checkout', false)
+            ->assertJsonPath('subscription.status', 'trialing');
+        Http::assertNothingSent();
+        $this->assertDatabaseCount('user_subscriptions', 1);
+    }
+
     private function createPlan(): SubscriptionPlan
     {
         return SubscriptionPlan::query()->create([
