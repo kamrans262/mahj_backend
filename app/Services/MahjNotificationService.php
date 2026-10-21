@@ -222,7 +222,7 @@ class MahjNotificationService
             recipient: $subscription->user,
             type: 'subscription_update',
             title: 'Subscription Update',
-            message: 'Your '.($subscription->plan?->name ?? 'Mahj').' subscription is now '.$status.'.',
+            message: 'Your '.($subscription->plan?->name ?? 'Mahj Around Town').' subscription is now '.$status.'.',
             eventKey: 'subscription-update:'.$fingerprint,
         );
     }

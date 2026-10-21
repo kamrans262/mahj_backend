@@ -103,6 +103,58 @@ class MatchFilterTest extends TestCase
         $this->assertTrue($ids->contains((string) $discoverable->id));
     }
 
+    public function test_distance_sort_searches_beyond_first_250_matches_and_respects_50_mile_radius(): void
+    {
+        $viewer = User::factory()->create();
+        $host = User::factory()->create();
+
+        for ($index = 0; $index < 251; $index++) {
+            $this->createMatch(
+                $host,
+                'Earlier Match '.$index,
+                40.9900,
+                -73.968285,
+                now()->addDay()->addMinutes($index),
+            );
+        }
+
+        // This much closer match starts later and was previously excluded
+        // by the first-250-by-date candidate limit.
+        $near = $this->createMatch(
+            $host,
+            'Closest Late Match',
+            40.7860,
+            -73.968285,
+            now()->addDays(3),
+        );
+
+        $response = $this->actingAs($viewer, 'sanctum')
+            ->getJson('/api/matches?latitude=40.785091&longitude=-73.968285&radius_miles=50&sort=distance&discover_only=1')
+            ->assertOk()
+            ->assertJsonPath('meta.filters.distance_sort_applied', true)
+            ->assertJsonPath('data.0.id', (string) $near->id);
+
+        $distances = collect($response->json('data'))->pluck('distance_miles');
+        $this->assertSame($distances->sort()->values()->all(), $distances->all());
+    }
+
+    public function test_radius_search_supports_coordinates_across_international_date_line(): void
+    {
+        $viewer = User::factory()->create();
+        $near = $this->createMatch(
+            User::factory()->create(),
+            'Dateline Court',
+            0.0,
+            -179.8,
+            now()->addDay(),
+        );
+
+        $this->actingAs($viewer, 'sanctum')
+            ->getJson('/api/matches?latitude=0&longitude=179.8&radius_miles=50&sort=distance&discover_only=1')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', (string) $near->id);
+    }
+
     private function createMatch(
         User $host,
         string $venue,
