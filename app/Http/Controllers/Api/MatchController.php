@@ -94,11 +94,27 @@ class MatchController extends Controller
             (int) ($validated['timezone_offset_minutes'] ?? 0),
         );
 
+        $hasCoordinates = isset($validated['latitude'], $validated['longitude']);
+        $sort = (string) ($validated['sort'] ?? 'date');
+
+        // Bound geographic searches in SQL before loading records. Never cut
+        // distance searches to the first 250 matches ordered by date: a
+        // closer match could have a later start time.
+        if ($hasCoordinates && isset($validated['radius_miles'])) {
+            $this->applyRadiusBoundingBox(
+                $query,
+                (float) $validated['latitude'],
+                (float) $validated['longitude'],
+                (float) $validated['radius_miles'],
+            );
+        }
+
         /** @var Collection<int, MahjMatch> $matches */
-        $matches = $query
-            ->orderBy('starts_at')
-            ->limit(self::MAX_DISCOVERY_ROWS)
-            ->get();
+        $matchesQuery = $query->orderBy('starts_at');
+        if (! $hasCoordinates || ($sort !== 'distance' && ! isset($validated['radius_miles']))) {
+            $matchesQuery->limit(self::MAX_DISCOVERY_ROWS);
+        }
+        $matches = $matchesQuery->get();
 
         if ($request->boolean('open_spots_only')) {
             $matches = $matches
@@ -107,7 +123,6 @@ class MatchController extends Controller
                 ->values();
         }
 
-        $hasCoordinates = isset($validated['latitude'], $validated['longitude']);
         if ($hasCoordinates) {
             $originLatitude = (float) $validated['latitude'];
             $originLongitude = (float) $validated['longitude'];
@@ -135,7 +150,6 @@ class MatchController extends Controller
             }
         }
 
-        $sort = (string) ($validated['sort'] ?? 'date');
         if ($sort === 'distance' && $hasCoordinates) {
             $matches = $matches->sort(function (MahjMatch $left, MahjMatch $right): int {
                 $leftDistance = $left->getAttribute('distance_miles');
@@ -164,6 +178,7 @@ class MatchController extends Controller
                     'date_filter' => (string) ($validated['date_filter'] ?? 'any'),
                     'open_spots_only' => $request->boolean('open_spots_only'),
                     'sort' => $sort,
+                    'distance_sort_applied' => $sort === 'distance' && $hasCoordinates,
                 ],
             ],
         ]);
@@ -509,6 +524,48 @@ class MatchController extends Controller
             $start->copy()->subMinutes($offsetMinutes),
             $end->copy()->subMinutes($offsetMinutes),
         ]);
+    }
+
+    /**
+     * Constrain candidate rows without excluding any point inside the true
+     * great-circle radius, including near the poles and date line.
+     */
+    private function applyRadiusBoundingBox(
+        Builder $query,
+        float $latitude,
+        float $longitude,
+        float $radiusMiles,
+    ): void {
+        $angularRadius = $radiusMiles / self::EARTH_RADIUS_MILES;
+        $latitudeDelta = rad2deg($angularRadius);
+        $query->whereBetween('latitude', [
+            max(-90.0, $latitude - $latitudeDelta),
+            min(90.0, $latitude + $latitudeDelta),
+        ]);
+
+        $cosLatitude = abs(cos(deg2rad($latitude)));
+        if ($cosLatitude <= sin($angularRadius)) {
+            // The search circle reaches a pole: any longitude is possible.
+            return;
+        }
+
+        $longitudeDelta = rad2deg(asin(min(1.0, sin($angularRadius) / $cosLatitude)));
+        $minLongitude = $longitude - $longitudeDelta;
+        $maxLongitude = $longitude + $longitudeDelta;
+
+        if ($minLongitude < -180.0) {
+            $query->where(function (Builder $query) use ($minLongitude, $maxLongitude): void {
+                $query->where('longitude', '>=', $minLongitude + 360.0)
+                    ->orWhere('longitude', '<=', $maxLongitude);
+            });
+        } elseif ($maxLongitude > 180.0) {
+            $query->where(function (Builder $query) use ($minLongitude, $maxLongitude): void {
+                $query->where('longitude', '>=', $minLongitude)
+                    ->orWhere('longitude', '<=', $maxLongitude - 360.0);
+            });
+        } else {
+            $query->whereBetween('longitude', [$minLongitude, $maxLongitude]);
+        }
     }
 
     private function distanceMiles(

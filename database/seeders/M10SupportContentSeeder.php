@@ -60,13 +60,13 @@ class M10SupportContentSeeder extends Seeder
                         [
                             'title' => 'Acceptance of Terms',
                             'paragraphs' => [
-                                'By creating an account, accessing, or using Mahj, you agree to be bound by these Terms & Conditions. If you do not agree with any part of these terms, you must not use the app.',
+                                'By creating an account, accessing, or using Mahj Around Town, you agree to be bound by these Terms & Conditions. If you do not agree with any part of these terms, you must not use the app.',
                             ],
                         ],
                         [
                             'title' => 'Eligibility',
                             'paragraphs' => [
-                                'You must meet the minimum age requirements that apply in your jurisdiction to use Mahj. By using the app, you confirm that the information you provide is accurate and that you are permitted to participate in matches.',
+                                'You must meet the minimum age requirements that apply in your jurisdiction to use Mahj Around Town. By using the app, you confirm that the information you provide is accurate and that you are permitted to participate in matches.',
                             ],
                         ],
                         [
@@ -78,7 +78,7 @@ class M10SupportContentSeeder extends Seeder
                         [
                             'title' => 'App Purpose',
                             'paragraphs' => [
-                                'Mahj helps players discover, create, and coordinate local games. Mahj does not organize, supervise, or guarantee the quality, safety, legality, or availability of any match or event.',
+                                'Mahj Around Town helps players discover, create, and coordinate local games. Mahj Around Town does not organize, supervise, or guarantee the quality, safety, legality, or availability of any match or event.',
                             ],
                         ],
                         [
@@ -97,7 +97,7 @@ class M10SupportContentSeeder extends Seeder
                         [
                             'title' => 'Community Conduct',
                             'paragraphs' => [
-                                'You must treat other players respectfully and must not use Mahj for harassment, threats, fraud, unlawful activity, or conduct that places other users at risk.',
+                                'You must treat other players respectfully and must not use Mahj Around Town for harassment, threats, fraud, unlawful activity, or conduct that places other users at risk.',
                             ],
                         ],
                         [
@@ -121,7 +121,7 @@ class M10SupportContentSeeder extends Seeder
                         [
                             'title' => 'Information We Collect',
                             'paragraphs' => [
-                                'Mahj may collect account information, profile details, match activity, support requests, device information, and other data you choose to provide when using the app.',
+                                'Mahj Around Town may collect account information, profile details, match activity, support requests, device information, and other data you choose to provide when using the app.',
                             ],
                         ],
                         [
@@ -133,13 +133,13 @@ class M10SupportContentSeeder extends Seeder
                         [
                             'title' => 'Location Information',
                             'paragraphs' => [
-                                'When you allow location access, Mahj may use location information to show nearby matches and distance-based results. You can control device location permissions through your operating-system settings.',
+                                'When you allow location access, Mahj Around Town may use location information to show nearby matches and distance-based results. You can control device location permissions through your operating-system settings.',
                             ],
                         ],
                         [
                             'title' => 'Sharing of Information',
                             'paragraphs' => [
-                                'We do not sell personal information. Information may be shared with service providers when needed to operate Mahj, comply with law, protect users, or complete a service you request.',
+                                'We do not sell personal information. Information may be shared with service providers when needed to operate Mahj Around Town, comply with law, protect users, or complete a service you request.',
                             ],
                         ],
                         [
@@ -151,13 +151,13 @@ class M10SupportContentSeeder extends Seeder
                         [
                             'title' => 'Your Choices',
                             'paragraphs' => [
-                                'You may update profile information, manage certain permissions, block users, and request account deletion through the relevant Mahj settings.',
+                                'You may update profile information, manage certain permissions, block users, and request account deletion through the relevant Mahj Around Town settings.',
                             ],
                         ],
                         [
                             'title' => 'Security',
                             'paragraphs' => [
-                                'Mahj uses reasonable technical and organizational safeguards designed to protect information, but no method of transmission or storage can be guaranteed to be completely secure.',
+                                'Mahj Around Town uses reasonable technical and organizational safeguards designed to protect information, but no method of transmission or storage can be guaranteed to be completely secure.',
                             ],
                         ],
                         [
