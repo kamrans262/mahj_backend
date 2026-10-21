@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -49,6 +50,16 @@ class MahjMatch extends Model
             'cancelled_at' => 'datetime',
             'completed_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Historical, non-cancelled games. A game counts after its start time,
+     * even if its host has not formally closed it yet (Past Games policy).
+     */
+    public function scopePastNonCancelled(Builder $query): Builder
+    {
+        return $query->where('starts_at', '<', now())
+            ->where('status', '!=', 'cancelled');
     }
 
     public function host(): BelongsTo

@@ -18,6 +18,10 @@ class MatchFavoriteController extends Controller
         $user = $request->user();
 
         $matches = $user->favoriteMatches()
+            // Only actionable upcoming games are visible in Favorites.
+            // Do not detach saved historical favorites or delete matches.
+            ->where('starts_at', '>=', now())
+            ->whereNotIn('status', ['completed', 'cancelled'])
             ->with(['host', 'players', 'sport'])
             ->withCount('players')
             ->whereDoesntHave(

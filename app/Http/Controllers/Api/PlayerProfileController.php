@@ -41,14 +41,15 @@ class PlayerProfileController extends Controller
         $page = (int) ($validated['page'] ?? 1);
         $perPage = (int) ($validated['per_page'] ?? 2);
 
-        // A mutual match must contain BOTH actual joined players.
-        // Neither merely viewing a match nor sending an invitation counts.
+        // Shared history requires both players to have joined a match whose
+        // scheduled time has passed. Future invites/games don't count.
+        // An invitation alone is not membership.
         $mutual = MahjMatch::query()
             ->with(['host', 'players', 'sport'])
             ->withCount('players')
             ->whereHas('players', fn (Builder $query): Builder => $query->whereKey($viewer->id))
             ->whereHas('players', fn (Builder $query): Builder => $query->whereKey($user->id))
-            ->where('status', '!=', 'cancelled')
+            ->pastNonCancelled()
             ->whereDoesntHave(
                 'host.blockedUsers',
                 fn (Builder $query): Builder => $query->where('blocked_user_id', $viewer->id),

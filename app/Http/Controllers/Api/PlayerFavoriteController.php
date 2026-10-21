@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -17,7 +18,16 @@ class PlayerFavoriteController extends Controller
         $currentUser = $request->user();
 
         $players = $currentUser->favoritePlayers()
-            ->withCount('joinedMatches')
+            // Count only past games joined by BOTH this viewer and the
+            // favorited player. Uses the same Past Games criteria as profile.
+            ->withCount(['joinedMatches as mutual_games_count' => function (Builder $query) use ($currentUser): void {
+                $query->pastNonCancelled()
+                    ->whereHas('players', fn (Builder $players): Builder => $players->whereKey($currentUser->id))
+                    ->whereDoesntHave(
+                        'host.blockedUsers',
+                        fn (Builder $blocked): Builder => $blocked->where('blocked_user_id', $currentUser->id),
+                    );
+            }])
             ->where('is_suspended', false)
             ->orderByPivot('created_at', 'desc')
             ->limit(100)
@@ -80,7 +90,10 @@ class PlayerFavoriteController extends Controller
             'name' => $user->name,
             'username' => Str::before($user->email, '@'),
             'avatar_url' => $user->avatarUrl($request->getSchemeAndHttpHost()),
-            'games_count' => (int) ($user->joined_matches_count ?? 0),
+            // Kept for backwards compatibility; value is MUTUAL games,
+            // not the other player's lifetime games count.
+            'games_count' => (int) ($user->mutual_games_count ?? 0),
+            'mutual_games_count' => (int) ($user->mutual_games_count ?? 0),
             'is_favorite' => true,
         ];
     }
