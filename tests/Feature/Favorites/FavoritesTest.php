@@ -46,7 +46,7 @@ class FavoritesTest extends TestCase
         }
     }
 
-    public function test_by_player_and_profile_agree_on_real_past_mutual_games(): void
+    public function test_by_player_and_profile_agree_on_mutual_games_regardless_of_start_time(): void
     {
         $viewer = User::factory()->create();
         $favorite = User::factory()->create();
@@ -61,7 +61,7 @@ class FavoritesTest extends TestCase
         $notShared = $this->createMatch($viewer, now()->subDays(2));
         $this->join($notShared, $other);
 
-        // Future and cancelled games never count as played together.
+        // Shared future matches count as mutual the moment both players join.
         $future = $this->createMatch($viewer, now()->addDays(2));
         $this->join($future, $favorite);
         $cancelled = $this->createMatch($viewer, now()->subDay(), 'cancelled');
@@ -71,8 +71,8 @@ class FavoritesTest extends TestCase
             ->getJson('/api/favorite-players')
             ->assertOk()
             ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.mutual_games_count', 1)
-            ->assertJsonPath('data.0.games_count', 1);
+            ->assertJsonPath('data.0.mutual_games_count', 2)
+            ->assertJsonPath('data.0.games_count', 2);
 
         $this->assertSame((string) $favorite->id, $favorites->json('data.0.id'));
         // The API must never leak the local part of private email addresses.
@@ -80,10 +80,14 @@ class FavoritesTest extends TestCase
 
         $profile = $this->getJson("/api/users/{$favorite->id}/profile")
             ->assertOk()
-            ->assertJsonPath('player.mutual_games_total', 1)
-            ->assertJsonCount(1, 'mutual_games');
+            ->assertJsonPath('player.mutual_games_total', 2)
+            ->assertJsonCount(2, 'mutual_games');
 
-        $this->assertSame((string) $shared->id, $profile->json('mutual_games.0.id'));
+        $ids = collect($profile->json('mutual_games'))->pluck('id')->all();
+        $this->assertEqualsCanonicalizing(
+            [(string) $shared->id, (string) $future->id],
+            $ids,
+        );
     }
 
     public function test_favorite_player_remains_saved_after_her_shared_games_end(): void

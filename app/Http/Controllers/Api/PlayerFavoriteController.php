@@ -17,10 +17,10 @@ class PlayerFavoriteController extends Controller
         $currentUser = $request->user();
 
         $players = $currentUser->favoritePlayers()
-            // Count only past games joined by BOTH this viewer and the
-            // favorited player. Uses the same Past Games criteria as profile.
+            // Count future and past non-cancelled games joined by BOTH users.
+            // This exactly matches the Player Profile mutual-games policy.
             ->withCount(['joinedMatches as mutual_games_count' => function (Builder $query) use ($currentUser): void {
-                $query->pastNonCancelled()
+                $query->where('status', '!=', 'cancelled')
                     ->whereHas('players', fn (Builder $players): Builder => $players->whereKey($currentUser->id))
                     ->whereDoesntHave(
                         'host.blockedUsers',

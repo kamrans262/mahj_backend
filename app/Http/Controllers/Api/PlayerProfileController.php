@@ -41,15 +41,15 @@ class PlayerProfileController extends Controller
         $page = (int) ($validated['page'] ?? 1);
         $perPage = (int) ($validated['per_page'] ?? 2);
 
-        // Shared history requires both players to have joined a match whose
-        // scheduled time has passed. Future invites/games don't count.
-        // An invitation alone is not membership.
+        // Mutual games are those joined by BOTH users, including future
+        // scheduled matches. Invitations alone do not count as joined;
+        // cancelled games are excluded. This must match FavoritePlayerController.
         $mutual = MahjMatch::query()
             ->with(['host', 'players', 'sport'])
             ->withCount('players')
             ->whereHas('players', fn (Builder $query): Builder => $query->whereKey($viewer->id))
             ->whereHas('players', fn (Builder $query): Builder => $query->whereKey($user->id))
-            ->pastNonCancelled()
+            ->where('status', '!=', 'cancelled')
             ->whereDoesntHave(
                 'host.blockedUsers',
                 fn (Builder $query): Builder => $query->where('blocked_user_id', $viewer->id),
@@ -57,12 +57,17 @@ class PlayerProfileController extends Controller
             ->orderByDesc('starts_at')
             ->paginate($perPage, ['*'], 'page', $page);
 
-        $played = $user->joinedMatches()->count();
-        $pastNonCancelled = $user->joinedMatches()
-            ->where('starts_at', '<', now())
-            ->where('status', '!=', 'cancelled')->count();
+        // Live statistics: future bookings and cancelled games are not
+        // treated as games actually played or hosted.
+        $played = $user->joinedMatches()->pastNonCancelled()->count();
+        $hosted = $user->hostedMatches()->pastNonCancelled()->count();
         $completed = $user->joinedMatches()
-            ->where('status', 'completed')->count();
+            ->pastNonCancelled()
+            ->where('status', 'completed')
+            ->count();
+
+        // Currently a completion-based estimate, not verified check-in
+        // attendance. The database does not yet record presence per player.
 
         return response()->json([
             'player' => [
@@ -70,9 +75,9 @@ class PlayerProfileController extends Controller
                 'name' => $user->name,
                 'avatar_url' => $user->avatarUrl($request->getSchemeAndHttpHost()),
                 'matches_played' => $played,
-                'matches_hosted' => $user->hostedMatches()->count(),
-                'attendance_percent' => $pastNonCancelled > 0
-                    ? (int) min(100, round(100 * $completed / $pastNonCancelled))
+                'matches_hosted' => $hosted,
+                'attendance_percent' => $played > 0
+                    ? (int) min(100, round(100 * $completed / $played))
                     : 0,
                 'member_since_year' => $user->created_at?->year,
                 'mutual_games_total' => $mutual->total(),
