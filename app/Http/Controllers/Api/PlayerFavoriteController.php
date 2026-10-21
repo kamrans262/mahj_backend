@@ -7,7 +7,6 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class PlayerFavoriteController extends Controller
@@ -88,7 +87,6 @@ class PlayerFavoriteController extends Controller
         return [
             'id' => (string) $user->id,
             'name' => $user->name,
-            'username' => Str::before($user->email, '@'),
             'avatar_url' => $user->avatarUrl($request->getSchemeAndHttpHost()),
             // Kept for backwards compatibility; value is MUTUAL games,
             // not the other player's lifetime games count.

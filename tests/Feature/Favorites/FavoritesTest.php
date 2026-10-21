@@ -75,6 +75,8 @@ class FavoritesTest extends TestCase
             ->assertJsonPath('data.0.games_count', 1);
 
         $this->assertSame((string) $favorite->id, $favorites->json('data.0.id'));
+        // The API must never leak the local part of private email addresses.
+        $this->assertArrayNotHasKey('username', $favorites->json('data.0'));
 
         $profile = $this->getJson("/api/users/{$favorite->id}/profile")
             ->assertOk()
