@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\MatchInvitationController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\PlayerFavoriteController;
+use App\Http\Controllers\Api\PlayerProfileController;
 use App\Http\Controllers\Api\SportController;
 use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\SupportContentController;
@@ -73,6 +74,7 @@ Route::middleware(['auth:sanctum', 'account.active'])->group(function (): void {
     Route::get('/matches/{match}', [MatchController::class, 'show']);
     Route::get('/matches/{match}/people', [MatchController::class, 'people']);
     Route::put('/matches/{match}/schedule', [MatchController::class, 'updateSchedule']);
+    Route::put('/matches/{match}', [MatchController::class, 'update']);
     Route::post('/matches/{match}/join', [MatchController::class, 'join']);
     Route::post('/matches/{match}/favorite', [MatchFavoriteController::class, 'store']);
     Route::delete('/matches/{match}/favorite', [MatchFavoriteController::class, 'destroy']);
@@ -104,6 +106,7 @@ Route::middleware(['auth:sanctum', 'account.active'])->group(function (): void {
     Route::delete('/device-tokens', [DeviceTokenController::class, 'destroy']);
 
     Route::get('/safety', [UserModerationController::class, 'index']);
+    Route::get('/users/{user}/profile', [PlayerProfileController::class, 'show']);
     Route::get('/users/search', [UserModerationController::class, 'search'])
         ->middleware('throttle:30,1');
     Route::post('/users/{user}/report', [UserModerationController::class, 'report']);

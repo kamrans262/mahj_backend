@@ -310,6 +310,68 @@ class MatchController extends Controller
         ], 201);
     }
 
+    public function update(Request $request, MahjMatch $match): JsonResponse
+    {
+        $validated = $request->validate([
+            'location_address' => ['required', 'string', 'max:255'],
+            'venue_name' => ['nullable', 'string', 'max:160'],
+            'notes' => ['nullable', 'string', 'max:2000'],
+            'starts_at' => ['required', 'date', 'after:now'],
+            'is_public' => ['required', 'boolean'],
+            'is_invite_only' => ['required', 'boolean'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90', 'required_with:longitude'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
+        ]);
+
+        /** @var User $user */
+        $user = $request->user();
+        $match = DB::transaction(function () use ($user, $match, $validated): MahjMatch {
+            /** @var MahjMatch $locked */
+            $locked = MahjMatch::query()->lockForUpdate()->findOrFail($match->id);
+            if ($locked->host_user_id !== $user->id) {
+                abort(403, 'Only the host can edit this match.');
+            }
+
+            if (in_array($locked->status, ['cancelled', 'completed'], true)
+                || $locked->starts_at->isPast()) {
+                throw ValidationException::withMessages([
+                    'match' => ['Past or closed matches cannot be edited.'],
+                ]);
+            }
+
+            $nextTime = Carbon::parse((string) $validated['starts_at']);
+            $locationAddress = trim($validated['location_address']);
+            $venue = trim((string) ($validated['venue_name'] ?? ''));
+            $notes = trim((string) ($validated['notes'] ?? ''));
+            $locationChanged = $locationAddress !== $locked->location_address
+                || ($venue !== '' ? $venue : null) !== $locked->venue_name;
+            $scheduleChanged = ! $locked->starts_at->equalTo($nextTime) || $locationChanged;
+
+            $locked->update([
+                'location_address' => $locationAddress,
+                'venue_name' => $venue === '' ? null : $venue,
+                'notes' => $notes === '' ? null : $notes,
+                'starts_at' => $nextTime,
+                'latitude' => $validated['latitude'] ?? null,
+                'longitude' => $validated['longitude'] ?? null,
+                'is_invite_only' => (bool) $validated['is_invite_only'],
+                'is_public' => (bool) $validated['is_invite_only']
+                    ? false : (bool) $validated['is_public'],
+            ]);
+            if ($scheduleChanged) {
+                $this->chat->scheduleChanged($locked);
+                $this->notifications->scheduleChanged($locked);
+            }
+
+            return $locked->refresh();
+        });
+
+        return response()->json([
+            'message' => 'Match updated.',
+            'match' => $this->resource($request, $match),
+        ]);
+    }
+
     public function updateSchedule(Request $request, MahjMatch $match): JsonResponse
     {
         $validated = $request->validate([
