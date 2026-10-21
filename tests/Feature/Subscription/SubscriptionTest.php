@@ -13,7 +13,7 @@ class SubscriptionTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_user_can_start_trial_and_read_subscription_state_without_stripe(): void
+    public function test_without_stripe_a_payment_card_cannot_be_skipped(): void
     {
         config()->set('services.stripe.secret', null);
 
@@ -22,14 +22,16 @@ class SubscriptionTest extends TestCase
 
         $this->actingAs($user, 'sanctum')
             ->postJson('/api/subscription/start-trial', ['plan_id' => $plan->id])
-            ->assertCreated()
-            ->assertJsonPath('requires_checkout', false)
-            ->assertJsonPath('subscription.status', 'trialing');
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('subscription');
+
+        $this->assertDatabaseMissing('user_subscriptions', ['user_id' => $user->id]);
 
         $this->actingAs($user, 'sanctum')
             ->getJson('/api/subscription')
             ->assertOk()
-            ->assertJsonPath('current_plan.id', (string) $plan->id);
+            ->assertJsonPath('current_plan.id', 'free')
+            ->assertJsonPath('has_access', false);
     }
 
     public function test_invalid_stored_stripe_price_value_falls_back_to_inline_price_data(): void
@@ -92,6 +94,7 @@ class SubscriptionTest extends TestCase
 
             return ($body['mode'] ?? null) === 'subscription'
                 && ($body['client_reference_id'] ?? null) === (string) $user->id
+                && ($body['payment_method_collection'] ?? null) === 'always'
                 && data_get($body, 'metadata.plan_id') === (string) $plan->id
                 && data_get($body, 'line_items.0.price_data.unit_amount') === (string) $plan->price_cents;
         });
@@ -385,6 +388,45 @@ class SubscriptionTest extends TestCase
             ->assertOk()
             ->assertJsonPath('available_plans.0.price_label', '$19.99')
             ->assertJsonPath('available_plans.0.trial_days', 14);
+    }
+
+    public function test_membership_gate_rejects_no_card_manual_and_expired_subscriptions(): void
+    {
+        config()->set('mahj.enforce_subscription_for_app', true);
+        $user = User::factory()->create();
+        $plan = $this->createPlan();
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/my-matches')
+            ->assertStatus(402)
+            ->assertJsonPath('code', 'subscription_required');
+
+        // Auth, profile maintenance, and secure checkout remain available.
+        $this->getJson('/api/user')->assertOk();
+        $this->getJson('/api/subscription')->assertOk()->assertJsonPath('has_access', false);
+
+        $manual = UserSubscription::query()->create([
+            'user_id' => $user->id, 'subscription_plan_id' => $plan->id,
+            'status' => 'trialing', 'provider' => 'manual',
+            'trial_ends_at' => now()->addDays(14),
+            'current_period_ends_at' => now()->addDays(14),
+        ]);
+        $this->getJson('/api/my-matches')->assertStatus(402);
+        $manual->update([
+            'provider' => 'stripe', 'provider_subscription_id' => 'sub_verified_example',
+            'status' => 'trialing',
+        ]);
+        $this->getJson('/api/my-matches')->assertOk();
+        $this->getJson('/api/subscription')->assertJsonPath('has_access', true);
+
+        $manual->update([
+            'trial_ends_at' => now()->subDay(),
+            'current_period_ends_at' => now()->subHour(),
+        ]);
+        $this->getJson('/api/my-matches')->assertStatus(402);
+
+        $manual->update(['status' => 'active', 'current_period_ends_at' => now()->addDays(15)]);
+        $this->getJson('/api/my-matches')->assertOk();
     }
 
     private function createPlan(): SubscriptionPlan

@@ -62,6 +62,9 @@ Route::middleware(['auth:sanctum', 'account.active'])->group(function (): void {
     Route::put('/subscription/plan', [SubscriptionController::class, 'changePlan']);
     Route::post('/subscription/cancel', [SubscriptionController::class, 'cancel']);
 
+    // Authentication and billing remain available without a membership.
+    // Community content and actions require an active Stripe subscription/trial.
+    Route::middleware('subscription.active')->group(function (): void {
     Route::get('/sports', [SportController::class, 'index']);
     Route::get('/locations/search', [LocationController::class, 'search'])
         ->middleware('throttle:30,1');
@@ -112,4 +115,5 @@ Route::middleware(['auth:sanctum', 'account.active'])->group(function (): void {
     Route::post('/users/{user}/report', [UserModerationController::class, 'report']);
     Route::post('/users/{user}/block', [UserModerationController::class, 'block']);
     Route::delete('/users/{user}/block', [UserModerationController::class, 'unblock']);
+    });
 });

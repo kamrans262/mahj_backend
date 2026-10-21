@@ -212,6 +212,31 @@ class MatchCompletionTest extends TestCase
         $this->assertSame('confirmed', $pastConfirmed->refresh()->status);
     }
 
+    public function test_upcoming_includes_hosted_and_joined_future_games_without_duplicates(): void
+    {
+        $host = User::factory()->create();
+        $other = User::factory()->create();
+        $own = $this->createMatch($host, now()->addDay(), 'open');
+        $joined = $this->createMatch($other, now()->addDays(2), 'confirmed');
+        $joined->players()->attach($host->id, ['joined_at' => now()]);
+
+        $past = $this->createMatch($host, now()->subHour(), 'open');
+        $cancelled = $this->createMatch($host, now()->addDays(3), 'cancelled');
+        $response = $this->actingAs($host, 'sanctum')
+            ->getJson('/api/my-matches')->assertOk();
+
+        $upcoming = collect($response->json('upcoming'))->pluck('id');
+        $created = collect($response->json('created_by_me'))->pluck('id');
+
+        $this->assertContains((string) $own->id, $upcoming->all());
+        $this->assertContains((string) $joined->id, $upcoming->all());
+        $this->assertSame(1, $upcoming->filter(fn ($id) => $id === (string) $own->id)->count());
+        $this->assertNotContains((string) $past->id, $upcoming->all());
+        $this->assertNotContains((string) $cancelled->id, $upcoming->all());
+        $this->assertContains((string) $own->id, $created->all());
+        $this->assertNotContains((string) $joined->id, $created->all());
+    }
+
     private function createMatch(
         User $host,
         \DateTimeInterface $startsAt,

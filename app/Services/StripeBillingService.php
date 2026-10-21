@@ -48,6 +48,8 @@ class StripeBillingService
 
         $payload = [
             'mode' => 'subscription',
+            // Even with a free trial Stripe must collect a reusable card.
+            'payment_method_collection' => 'always',
             'success_url' => rtrim(config('app.url'), '/').'/billing/success?session_id={CHECKOUT_SESSION_ID}',
             'cancel_url' => rtrim(config('app.url'), '/').'/billing/cancel',
             'client_reference_id' => (string) $user->id,

@@ -17,6 +17,7 @@ class SubscriptionController extends Controller
 {
     public function __construct(
         private readonly StripeBillingService $stripe,
+        private readonly \App\Services\SubscriptionEntitlementService $entitlements,
         private readonly MahjNotificationService $notifications,
     ) {
     }
@@ -41,7 +42,7 @@ class SubscriptionController extends Controller
             ->where('user_id', $request->user()->id)
             ->first();
 
-        if ($existing !== null && in_array($existing->status, ['trialing', 'active'], true)) {
+        if ($this->entitlements->validSubscription($existing)) {
             throw ValidationException::withMessages([
                 'subscription' => ['You already have an active subscription.'],
             ]);
@@ -59,34 +60,11 @@ class SubscriptionController extends Controller
             ], 201);
         }
 
-        $subscription = DB::transaction(function () use ($request, $plan): UserSubscription {
-            $trialEndsAt = $plan->trial_days > 0
-                ? now()->addDays($plan->trial_days)
-                : null;
-
-            return UserSubscription::query()->updateOrCreate(
-                ['user_id' => $request->user()->id],
-                [
-                    'subscription_plan_id' => $plan->id,
-                    'status' => $trialEndsAt ? 'trialing' : 'active',
-                    'provider' => 'manual',
-                    'trial_ends_at' => $trialEndsAt,
-                    'current_period_ends_at' => $trialEndsAt ?? now()->addMonth(),
-                    'cancel_at_period_end' => false,
-                ],
-            );
-        });
-
-        $subscription->load('plan');
-        $this->notifications->subscriptionUpdated($subscription);
-
-        return response()->json([
-            'message' => $subscription->status === 'trialing'
-                ? 'Free trial started.'
-                : 'Subscription activated.',
-            'requires_checkout' => false,
-            ...$this->stateFor($request->user()->refresh()),
-        ], 201);
+        // A checkout without Stripe cannot collect or verify a payment card.
+        // Fail closed rather than silently activating an unverified manual trial.
+        throw ValidationException::withMessages([
+            'subscription' => ['Secure card checkout is temporarily unavailable. Please try again later.'],
+        ]);
     }
 
     public function startPayment(Request $request): JsonResponse
@@ -296,7 +274,7 @@ class SubscriptionController extends Controller
             ->where('user_id', $user->id)
             ->first();
 
-        $hasCurrentEntitlement = $this->hasCurrentEntitlement($subscription);
+        $hasCurrentEntitlement = $this->entitlements->validSubscription($subscription);
         $currentPlan = $hasCurrentEntitlement ? $subscription?->plan : null;
 
         return [
@@ -329,25 +307,9 @@ class SubscriptionController extends Controller
                 'current_period_ends_at' => $subscription->current_period_ends_at?->toISOString(),
                 'cancel_at_period_end' => $subscription->cancel_at_period_end,
             ] : null,
-            'billing_provider' => $this->stripe->isConfigured() ? 'stripe' : 'manual',
+            'billing_provider' => $this->stripe->isConfigured() ? 'stripe' : 'unavailable',
+            'has_access' => $hasCurrentEntitlement,
         ];
-    }
-
-    private function hasCurrentEntitlement(?UserSubscription $subscription): bool
-    {
-        if ($subscription === null || ! in_array($subscription->status, ['trialing', 'active'], true)) {
-            return false;
-        }
-
-        if ($subscription->trial_ends_at?->isFuture()) {
-            return true;
-        }
-
-        if ($subscription->current_period_ends_at !== null) {
-            return $subscription->current_period_ends_at->isFuture();
-        }
-
-        return $subscription->status === 'active';
     }
 
     private function planPayload(

@@ -53,12 +53,14 @@ class MatchInvitationController extends Controller
         $upcomingPaginator = MahjMatch::query()
             ->with(['host', 'players', 'sport'])
             ->withCount('players')
-            ->where('host_user_id', '!=', $user->id)
+            ->where(function (Builder $query) use ($user): void {
+                $query->where('host_user_id', $user->id)
+                    ->orWhereHas('players', fn (Builder $query): Builder => $query->whereKey($user->id));
+            })
             ->whereDoesntHave(
                 'host.blockedUsers',
                 fn (Builder $query): Builder => $query->where('blocked_user_id', $user->id),
             )
-            ->whereHas('players', fn (Builder $query): Builder => $query->whereKey($user->id))
             ->where('starts_at', '>=', now())
             ->whereNotIn('status', ['cancelled', 'completed'])
             ->orderBy('starts_at')
