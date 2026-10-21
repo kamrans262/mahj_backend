@@ -135,11 +135,15 @@ class MahjNotificationService
 
     public function scheduleChanged(MahjMatch $match): void
     {
-        $scheduleKey = $match->starts_at?->utc()->format('YmdHis') ?? 'unknown';
+        $fingerprint = sha1(implode('|', [
+            $match->starts_at?->utc()->toISOString() ?? '',
+            (string) $match->location_address,
+            (string) $match->venue_name,
+        ]));
 
         $this->forMatchPlayers(
             $match,
-            function (User $player) use ($match, $scheduleKey): void {
+            function (User $player) use ($match, $fingerprint): void {
                 if ($player->id === $match->host_user_id) {
                     return;
                 }
@@ -147,10 +151,10 @@ class MahjNotificationService
                 $this->send(
                     recipient: $player,
                     type: 'schedule_changed',
-                    title: 'Schedule Changed',
-                    message: $this->matchLabel($match).' has a new date or time.',
+                    title: 'Game Details Changed',
+                    message: $this->matchLabel($match).' has updated time or location details.',
                     match: $match,
-                    eventKey: 'schedule-changed:'.$match->id.':'.$scheduleKey,
+                    eventKey: 'schedule-changed:'.$match->id.':'.$fingerprint,
                 );
             },
         );

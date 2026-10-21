@@ -193,6 +193,60 @@ class MatchTest extends TestCase
             ->assertUnprocessable();
     }
 
+    public function test_host_can_edit_future_match_and_players_receive_schedule_notification(): void
+    {
+        $host = User::factory()->create();
+        $participant = User::factory()->create();
+        $match = $this->createMatch($host);
+        $match->players()->attach($participant->id, ['joined_at' => now()]);
+
+        $this->actingAs($host, 'sanctum')
+            ->putJson("/api/matches/{$match->id}", [
+                'location_address' => 'Updated Mah Jongg venue',
+                'venue_name' => 'New Community Hall',
+                'notes' => 'Arrive ten minutes early',
+                'starts_at' => now()->addDays(2)->toISOString(),
+                'is_public' => true,
+                'is_invite_only' => false,
+            ])
+            ->assertOk()
+            ->assertJsonPath('match.venue_name', 'New Community Hall');
+
+        $match->refresh();
+        $this->assertSame('Updated Mah Jongg venue', $match->location_address);
+        $this->assertSame('Arrive ten minutes early', $match->notes);
+        $this->assertSame('open', $match->status);
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $participant->id,
+            'related_match_id' => $match->id,
+            'type' => 'schedule_changed',
+        ]);
+    }
+
+    public function test_non_host_cannot_edit_match_and_past_games_are_locked(): void
+    {
+        $host = User::factory()->create();
+        $other = User::factory()->create();
+        $match = $this->createMatch($host);
+
+        $payload = [
+            'location_address' => 'Updated Location',
+            'starts_at' => now()->addDays(3)->toISOString(),
+            'is_public' => true,
+            'is_invite_only' => false,
+        ];
+        $this->actingAs($other, 'sanctum')
+            ->putJson("/api/matches/{$match->id}", $payload)
+            ->assertForbidden();
+
+        $match->update(['starts_at' => now()->subHour()]);
+        $this->actingAs($host, 'sanctum')
+            ->putJson("/api/matches/{$match->id}", $payload)
+            ->assertUnprocessable();
+
+        $this->assertSame('Central Park, New York', $match->refresh()->location_address);
+    }
+
     private function createSport(): Sport
     {
         return Sport::query()->create([
