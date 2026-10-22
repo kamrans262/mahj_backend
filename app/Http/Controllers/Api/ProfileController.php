@@ -5,9 +5,41 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
 {
+    public function uploadAvatar(Request $request): UserResource
+    {
+        $validated = $request->validate([
+            'avatar' => ['required', 'image', 'mimes:jpeg,png,webp', 'max:5120'],
+        ]);
+
+        $user = $request->user();
+        $path = $validated['avatar']->store('avatars', 'public');
+        $oldPath = $user->avatar_path;
+        $user->update(['avatar_path' => $path]);
+
+        if ($oldPath && ! str_starts_with($oldPath, 'http')) {
+            Storage::disk('public')->delete($oldPath);
+        }
+
+        return new UserResource($user->refresh());
+    }
+
+    public function removeAvatar(Request $request): UserResource
+    {
+        $user = $request->user();
+        $oldPath = $user->avatar_path;
+        $user->update(['avatar_path' => null]);
+
+        if ($oldPath && ! str_starts_with($oldPath, 'http')) {
+            Storage::disk('public')->delete($oldPath);
+        }
+
+        return new UserResource($user->refresh());
+    }
+
     public function show(Request $request): UserResource
     {
         return new UserResource($request->user());
