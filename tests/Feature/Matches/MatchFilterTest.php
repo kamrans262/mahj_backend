@@ -72,10 +72,12 @@ class MatchFilterTest extends TestCase
         $this->assertFalse($ids->contains((string) $full->id));
     }
 
-    public function test_discovery_only_excludes_matches_owned_or_joined_by_current_user(): void
+    public function test_discovery_includes_owned_public_matches_but_not_other_joined_or_private_matches(): void
     {
         $viewer = User::factory()->create();
         $owned = $this->createMatch($viewer, 'Owned Court', 40.78, -73.96, now()->addDay());
+        $private = $this->createMatch($viewer, 'Private Court', 40.78, -73.96, now()->addDay());
+        $private->update(['is_public' => false, 'is_invite_only' => true]);
         $joined = $this->createMatch(
             User::factory()->create(),
             'Joined Court',
@@ -93,14 +95,18 @@ class MatchFilterTest extends TestCase
         );
 
         $response = $this->actingAs($viewer, 'sanctum')
-            ->getJson('/api/matches?discover_only=1')
+            ->getJson('/api/matches?discover_only=1&latitude=40.78&longitude=-73.96&radius_miles=50&sort=distance')
             ->assertOk();
 
         $ids = collect($response->json('data'))->pluck('id');
 
-        $this->assertFalse($ids->contains((string) $owned->id));
+        $this->assertTrue($ids->contains((string) $owned->id));
+        $this->assertFalse($ids->contains((string) $private->id));
         $this->assertFalse($ids->contains((string) $joined->id));
         $this->assertTrue($ids->contains((string) $discoverable->id));
+        $this->assertIsNumeric(
+            collect($response->json('data'))->firstWhere('id', (string) $owned->id)['distance_miles'],
+        );
     }
 
     public function test_distance_sort_searches_beyond_first_250_matches_and_respects_50_mile_radius(): void
