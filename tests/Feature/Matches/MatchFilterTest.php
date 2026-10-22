@@ -107,6 +107,12 @@ class MatchFilterTest extends TestCase
         $this->assertIsNumeric(
             collect($response->json('data'))->firstWhere('id', (string) $owned->id)['distance_miles'],
         );
+
+        $this->actingAs($viewer, 'sanctum')
+            ->getJson('/api/matches?discover_only=1&q=Owned%20Court&latitude=40.78&longitude=-73.96&radius_miles=6')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', (string) $owned->id);
     }
 
     public function test_distance_sort_searches_beyond_first_250_matches_and_respects_50_mile_radius(): void
