@@ -63,8 +63,15 @@ class MatchController extends Controller
             $query
                 ->where('is_public', true)
                 ->where('is_invite_only', false)
-                ->where('host_user_id', '!=', $user->id)
-                ->whereDoesntHave('players', fn (Builder $query): Builder => $query->whereKey($user->id));
+                ->where(function (Builder $query) use ($user): void {
+                    // Hosts must be able to find their own public games.
+                    // Continue to omit matches joined under another host.
+                    $query->where('host_user_id', $user->id)
+                        ->orWhereDoesntHave(
+                            'players',
+                            fn (Builder $players): Builder => $players->whereKey($user->id),
+                        );
+                });
         } else {
             $query->where(function (Builder $query) use ($user): void {
                 $query->where(function (Builder $query): void {
