@@ -48,6 +48,8 @@ Route::middleware(['auth:sanctum', 'account.active'])->group(function (): void {
 
     Route::get('/user', [ProfileController::class, 'show']);
     Route::put('/profile', [ProfileController::class, 'update']);
+    Route::post('/profile/avatar', [ProfileController::class, 'uploadAvatar']);
+    Route::delete('/profile/avatar', [ProfileController::class, 'removeAvatar']);
 
     Route::put('/account/email', [AccountController::class, 'changeEmail']);
     Route::put('/account/password', [AccountController::class, 'changePassword']);
