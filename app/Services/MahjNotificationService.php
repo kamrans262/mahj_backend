@@ -212,7 +212,10 @@ class MahjNotificationService
             return;
         }
 
-        $status = str_replace('_', ' ', $subscription->status);
+        $message = $subscription->status === 'trialing'
+            ? 'You are in a free trial subscription plan'
+            : 'Your '.($subscription->plan?->name ?? 'Mahj Around Town')
+                .' subscription is now '.str_replace('_', ' ', $subscription->status).'.';
         $fingerprint = sha1(implode('|', [
             (string) $subscription->id,
             (string) $subscription->subscription_plan_id,
@@ -226,7 +229,7 @@ class MahjNotificationService
             recipient: $subscription->user,
             type: 'subscription_update',
             title: 'Subscription Update',
-            message: 'Your '.($subscription->plan?->name ?? 'Mahj Around Town').' subscription is now '.$status.'.',
+            message: $message,
             eventKey: 'subscription-update:'.$fingerprint,
         );
     }
