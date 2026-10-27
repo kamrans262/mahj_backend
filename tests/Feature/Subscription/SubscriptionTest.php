@@ -476,7 +476,7 @@ class SubscriptionTest extends TestCase
             'current_period_ends_at' => now()->addDays(30),
         ]);
 
-        app(\\App\\Services\\MahjNotificationService::class)
+        app(\App\Services\MahjNotificationService::class)
             ->subscriptionUpdated($subscription);
 
         $this->assertDatabaseHas('user_notifications', [
@@ -489,7 +489,7 @@ class SubscriptionTest extends TestCase
             'status' => 'active',
             'trial_ends_at' => null,
         ]);
-        app(\\App\\Services\\MahjNotificationService::class)
+        app(\App\Services\MahjNotificationService::class)
             ->subscriptionUpdated($subscription->refresh());
 
         $this->assertDatabaseHas('user_notifications', [
