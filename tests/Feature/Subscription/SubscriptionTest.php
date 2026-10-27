@@ -466,11 +466,11 @@ class SubscriptionTest extends TestCase
         return SubscriptionPlan::query()->create([
             'name' => 'Monthly Plan',
             'slug' => 'monthly-test',
-            'description' => '14 day trial',
+            'description' => '30 day trial',
             'price_cents' => 999,
             'currency' => 'USD',
             'interval' => 'month',
-            'trial_days' => 14,
+            'trial_days' => 30,
             'is_active' => true,
             'sort_order' => 1,
         ]);
