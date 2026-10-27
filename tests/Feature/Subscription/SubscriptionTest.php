@@ -343,7 +343,7 @@ class SubscriptionTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_new_stripe_trial_checkout_uses_nineteen_ninety_nine_and_keeps_fourteen_days(): void
+    public function test_new_stripe_trial_checkout_uses_nineteen_ninety_nine_and_thirty_days(): void
     {
         config()->set('services.stripe.secret', 'sk_test_fake');
         Http::fake([
@@ -372,17 +372,18 @@ class SubscriptionTest extends TestCase
                 && data_get($payload, 'line_items.0.price_data.currency') === 'usd'
                 && data_get($payload, 'line_items.0.price_data.unit_amount') === '1999'
                 && data_get($payload, 'line_items.0.price_data.recurring.interval') === 'month'
-                && data_get($payload, 'subscription_data.trial_period_days') === '14';
+                && data_get($payload, 'subscription_data.trial_period_days') === '30';
         });
     }
 
-    public function test_default_monthly_plan_is_nineteen_ninety_nine_with_fourteen_day_trial(): void
+    public function test_default_monthly_plan_is_nineteen_ninety_nine_with_thirty_day_trial(): void
     {
         config()->set('services.stripe.secret', null);
         $plan = \App\Models\SubscriptionPlan::query()->where('slug', 'monthly')->firstOrFail();
 
         $this->assertSame(1999, $plan->price_cents);
-        $this->assertSame(14, $plan->trial_days);
+        $this->assertSame(30, $plan->trial_days);
+        $this->assertSame('No charges for 30 days', $plan->description);
         $this->assertNull($plan->stripe_price_id);
 
         $user = User::factory()->create();
@@ -390,7 +391,8 @@ class SubscriptionTest extends TestCase
             ->getJson('/api/subscription')
             ->assertOk()
             ->assertJsonPath('available_plans.0.price_label', '$19.99')
-            ->assertJsonPath('available_plans.0.trial_days', 14);
+            ->assertJsonPath('available_plans.0.trial_days', 30)
+            ->assertJsonPath('available_plans.0.description', 'No charges for 30 days');
     }
 
     public function test_membership_gate_rejects_no_card_manual_and_expired_subscriptions(): void
