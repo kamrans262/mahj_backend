@@ -461,6 +461,44 @@ class SubscriptionTest extends TestCase
         $this->assertDatabaseCount('user_subscriptions', 1);
     }
 
+    public function test_trial_notification_uses_the_clients_exact_wording(): void
+    {
+        config()->set('services.firebase.service_account_path', '');
+        $user = User::factory()->create();
+        $plan = $this->createPlan();
+        $subscription = UserSubscription::query()->create([
+            'user_id' => $user->id,
+            'subscription_plan_id' => $plan->id,
+            'status' => 'trialing',
+            'provider' => 'stripe',
+            'provider_subscription_id' => 'sub_test_notice',
+            'trial_ends_at' => now()->addDays(30),
+            'current_period_ends_at' => now()->addDays(30),
+        ]);
+
+        app(\\App\\Services\\MahjNotificationService::class)
+            ->subscriptionUpdated($subscription);
+
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $user->id,
+            'type' => 'subscription_update',
+            'message' => 'You are in a free trial subscription plan',
+        ]);
+
+        $subscription->update([
+            'status' => 'active',
+            'trial_ends_at' => null,
+        ]);
+        app(\\App\\Services\\MahjNotificationService::class)
+            ->subscriptionUpdated($subscription->refresh());
+
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $user->id,
+            'type' => 'subscription_update',
+            'message' => 'Your Monthly Plan subscription is now active.',
+        ]);
+    }
+
     private function createPlan(): SubscriptionPlan
     {
         return SubscriptionPlan::query()->create([
