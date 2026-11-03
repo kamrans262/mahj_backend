@@ -104,6 +104,24 @@ class NotificationController extends Controller
         ]);
     }
 
+    public function destroyAll(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        // Clears every notification for this user, including older pages.
+        // Other players' notification history is never affected.
+        $deleted = UserNotification::query()
+            ->where('user_id', $user->id)
+            ->delete();
+
+        return response()->json([
+            'message' => 'All notifications cleared.',
+            'deleted_count' => $deleted,
+            'unread_count' => 0,
+        ]);
+    }
+
     public function settings(Request $request): JsonResponse
     {
         /** @var User $user */
