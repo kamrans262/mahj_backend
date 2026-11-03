@@ -25,6 +25,7 @@ class NotificationController extends Controller
 
         $paginator = UserNotification::query()
             ->where('user_id', $user->id)
+            ->where('created_at', '>=', now()->subDays(30))
             ->latest('id')
             ->simplePaginate($perPage, ['*'], 'page', $page);
 
@@ -38,6 +39,7 @@ class NotificationController extends Controller
                 'has_more' => $paginator->hasMorePages(),
                 'unread_count' => UserNotification::query()
                     ->where('user_id', $user->id)
+                    ->where('created_at', '>=', now()->subDays(30))
                     ->whereNull('read_at')
                     ->count(),
             ],
@@ -52,6 +54,7 @@ class NotificationController extends Controller
         return response()->json([
             'unread_count' => UserNotification::query()
                 ->where('user_id', $user->id)
+                ->where('created_at', '>=', now()->subDays(30))
                 ->whereNull('read_at')
                 ->count(),
         ]);
@@ -62,7 +65,7 @@ class NotificationController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        if ($notification->user_id !== $user->id) {
+        if ($notification->user_id !== $user->id || $notification->created_at->lt(now()->subDays(30))) {
             abort(404);
         }
 
@@ -74,6 +77,28 @@ class NotificationController extends Controller
             'notification' => $this->notificationData($notification->refresh()),
             'unread_count' => UserNotification::query()
                 ->where('user_id', $user->id)
+                ->where('created_at', '>=', now()->subDays(30))
+                ->whereNull('read_at')
+                ->count(),
+        ]);
+    }
+
+    public function destroy(Request $request, UserNotification $notification): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        if ($notification->user_id !== $user->id) {
+            abort(404);
+        }
+
+        $notification->delete();
+
+        return response()->json([
+            'message' => 'Notification deleted.',
+            'unread_count' => UserNotification::query()
+                ->where('user_id', $user->id)
+                ->where('created_at', '>=', now()->subDays(30))
                 ->whereNull('read_at')
                 ->count(),
         ]);
