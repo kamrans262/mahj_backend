@@ -2,6 +2,7 @@
 
 use App\Models\MahjMatch;
 use App\Models\User;
+use App\Models\UserNotification;
 use App\Services\MahjNotificationService;
 use App\Services\MatchChatService;
 use Illuminate\Support\Facades\Artisan;
@@ -59,4 +60,20 @@ Artisan::command('mahj:chat-reminders', function (): int {
 
 Schedule::command('mahj:chat-reminders')
     ->everyFiveMinutes()
+    ->withoutOverlapping();
+
+// Clean up all read and unread notification history older than 30 days.
+// The API also filters expired rows immediately between scheduler runs.
+Artisan::command('mahj:prune-notifications', function (): int {
+    $deleted = UserNotification::query()
+        ->where('created_at', '<', now()->subDays(30))
+        ->delete();
+
+    $this->info('Deleted '.$deleted.' expired notification(s).');
+
+    return 0;
+})->purpose('Permanently delete notification history older than 30 days');
+
+Schedule::command('mahj:prune-notifications')
+    ->dailyAt('03:00')
     ->withoutOverlapping();
