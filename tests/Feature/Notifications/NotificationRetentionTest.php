@@ -77,6 +77,53 @@ class NotificationRetentionTest extends TestCase
         $this->assertDatabaseMissing('user_notifications', ['id' => $removeUnread->id]);
     }
 
+    public function test_clear_all_removes_every_page_of_only_the_authenticated_users_history(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+
+        for ($index = 0; $index < 25; $index++) {
+            $this->notification($owner, read: $index % 2 === 0);
+        }
+        $otherNotification = $this->notification($other);
+
+        $this->actingAs($owner, 'sanctum')
+            ->getJson('/api/notifications?per_page=5')
+            ->assertOk()
+            ->assertJsonPath('meta.has_more', true);
+
+        $this->actingAs($owner, 'sanctum')
+            ->deleteJson('/api/notifications')
+            ->assertOk()
+            ->assertJsonPath('deleted_count', 25)
+            ->assertJsonPath('unread_count', 0);
+
+        $this->actingAs($owner, 'sanctum')
+            ->getJson('/api/notifications')
+            ->assertOk()
+            ->assertJsonCount(0, 'data')
+            ->assertJsonPath('meta.unread_count', 0);
+
+        $this->actingAs($owner, 'sanctum')
+            ->getJson('/api/notifications/unread-count')
+            ->assertOk()
+            ->assertJsonPath('unread_count', 0);
+
+        $this->assertDatabaseHas('user_notifications', [
+            'id' => $otherNotification->id,
+            'user_id' => $other->id,
+        ]);
+        $this->assertDatabaseMissing('user_notifications', [
+            'user_id' => $owner->id,
+        ]);
+
+        // Repeated clearing must be safe if the user's history is empty.
+        $this->actingAs($owner, 'sanctum')
+            ->deleteJson('/api/notifications')
+            ->assertOk()
+            ->assertJsonPath('deleted_count', 0);
+    }
+
     private function notification(
         User $user,
         int $daysOld = 0,
