@@ -105,6 +105,7 @@ Route::middleware(['auth:sanctum', 'account.active'])->group(function (): void {
         Route::get('/notifications', [NotificationController::class, 'index']);
         Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
         Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
+        Route::delete('/notifications', [NotificationController::class, 'destroyAll']);
         Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy']);
         Route::get('/notification-settings', [NotificationController::class, 'settings']);
         Route::put('/notification-settings', [NotificationController::class, 'updateSettings']);
