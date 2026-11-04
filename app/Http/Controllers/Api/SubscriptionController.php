@@ -99,8 +99,10 @@ class SubscriptionController extends Controller
         // Status alone can remain "active" even after the period expires.
         // Use the same date-aware entitlement check as the app-access gate.
         if ($this->entitlements->validSubscription($existing)) {
-            throw ValidationException::withMessages([
-                'subscription' => ['Your subscription is already active.'],
+            return response()->json([
+                'message' => 'Your subscription is already active.',
+                'requires_checkout' => false,
+                ...$this->stateFor($request->user()),
             ]);
         }
 
