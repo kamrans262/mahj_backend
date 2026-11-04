@@ -110,6 +110,22 @@ class SubscriptionController extends Controller
             ]);
         }
 
+        // A webhook can be delayed after an expired trial automatically
+        // converts into a paid Stripe subscription. Check Stripe before
+        // opening a second checkout so the member is not charged twice.
+        if ($existing?->provider === 'stripe' && filled($existing->provider_subscription_id)) {
+            $remote = $this->stripe->retrieveSubscription($existing->provider_subscription_id);
+            $synced = $this->stripe->syncRemoteSubscription($remote);
+
+            if ($this->entitlements->validSubscription($synced)) {
+                return response()->json([
+                    'message' => 'Your subscription is already active.',
+                    'requires_checkout' => false,
+                    ...$this->stateFor($request->user()->refresh()),
+                ]);
+            }
+        }
+
         $session = $this->stripe->createCheckoutSession(
             $request->user(),
             $plan,
