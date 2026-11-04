@@ -32,6 +32,20 @@ class ExpiredTrialCheckoutTest extends TestCase
             ->assertJsonValidationErrors('subscription');
     }
 
+    public function test_past_due_stripe_trial_still_displays_free_trial_expired(): void
+    {
+        $user = User::factory()->create();
+        $plan = SubscriptionPlan::query()->where('slug', 'monthly')->firstOrFail();
+        $this->subscribe($user, $plan, 'past_due', now()->subDay(), now()->subHour());
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/subscription')
+            ->assertOk()
+            ->assertJsonPath('has_access', false)
+            ->assertJsonPath('can_start_trial', false)
+            ->assertJsonPath('trial_expired', true);
+    }
+
     public function test_expired_trial_opens_paid_stripe_checkout_without_a_second_trial(): void
     {
         config()->set('services.stripe.secret', 'sk_test_fake');
