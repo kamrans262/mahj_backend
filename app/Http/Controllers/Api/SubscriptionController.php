@@ -53,6 +53,15 @@ class SubscriptionController extends Controller
             ]);
         }
 
+        // A previous subscription record means this account has already
+        // entered the membership lifecycle. Never issue a second free trial:
+        // the expired/canceled account must use paid Checkout instead.
+        if ($existing !== null) {
+            throw ValidationException::withMessages([
+                'subscription' => ['Your free trial is no longer available. Please continue to payment.'],
+            ]);
+        }
+
         if ($this->stripe->isConfigured()) {
             $session = $this->stripe->createCheckoutSession($request->user(), $plan);
 
@@ -87,13 +96,11 @@ class SubscriptionController extends Controller
             ->where('user_id', $request->user()->id)
             ->first();
 
-        if (
-            $existing?->provider === 'stripe'
-            && $existing->status === 'active'
-            && ! $existing->cancel_at_period_end
-        ) {
+        // Status alone can remain "active" even after the period expires.
+        // Use the same date-aware entitlement check as the app-access gate.
+        if ($this->entitlements->validSubscription($existing)) {
             throw ValidationException::withMessages([
-                'subscription' => ['You already have an active paid subscription.'],
+                'subscription' => ['Your subscription is already active.'],
             ]);
         }
 
@@ -314,6 +321,13 @@ class SubscriptionController extends Controller
             ] : null,
             'billing_provider' => $this->stripe->isConfigured() ? 'stripe' : 'unavailable',
             'has_access' => $hasCurrentEntitlement,
+            // New accounts only. Existing/expired subscribers must pay now,
+            // even if the plan remains configured with a 30-day trial.
+            'can_start_trial' => $subscription === null,
+            'trial_expired' => $subscription !== null
+                && $subscription->status === 'trialing'
+                && $subscription->trial_ends_at?->isPast() === true
+                && ! $hasCurrentEntitlement,
         ];
     }
 
