@@ -134,6 +134,19 @@ class ExpiredTrialCheckoutTest extends TestCase
         );
     }
 
+    public function test_already_active_subscription_returns_access_instead_of_an_error(): void
+    {
+        $user = User::factory()->create();
+        $plan = SubscriptionPlan::query()->where('slug', 'monthly')->firstOrFail();
+        $this->subscribe($user, $plan, 'active', now()->subDay(), now()->addDays(25));
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/subscription/start-payment', ['plan_id' => $plan->id])
+            ->assertOk()
+            ->assertJsonPath('requires_checkout', false)
+            ->assertJsonPath('has_access', true);
+    }
+
     public function test_new_user_can_still_start_the_normal_30_day_trial(): void
     {
         $user = User::factory()->create();
