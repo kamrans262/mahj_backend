@@ -341,7 +341,7 @@ class SubscriptionController extends Controller
             // even if the plan remains configured with a 30-day trial.
             'can_start_trial' => $subscription === null,
             'trial_expired' => $subscription !== null
-                && $subscription->status === 'trialing'
+                && in_array($subscription->status, ['trialing', 'past_due', 'canceled'], true)
                 && $subscription->trial_ends_at?->isPast() === true
                 && ! $hasCurrentEntitlement,
         ];
