@@ -10,9 +10,15 @@ class GoogleIdentityService
 {
     public function verify(string $idToken): array
     {
-        $clientId = trim((string) config('services.google_sign_in.client_id'));
+        $clientIds = array_values(array_unique(array_filter(
+            array_map('trim', [
+                (string) config('services.google_sign_in.client_id'),
+                ...explode(',', (string) config('services.google_sign_in.additional_client_ids', '')),
+            ]),
+            static fn (string $clientId): bool => $clientId !== '',
+        )));
 
-        if ($clientId === '') {
+        if ($clientIds === []) {
             throw new RuntimeException(
                 'Google Sign-In is not configured on the server.',
             );
@@ -35,7 +41,7 @@ class GoogleIdentityService
 
         if (
             ! is_array($payload)
-            || ($payload['aud'] ?? null) !== $clientId
+            || ! in_array($payload['aud'] ?? null, $clientIds, true)
             || ! in_array(
                 $payload['iss'] ?? null,
                 ['accounts.google.com', 'https://accounts.google.com'],
