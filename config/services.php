@@ -36,6 +36,7 @@ return [
 
     'google_sign_in' => [
         'client_id' => env('GOOGLE_SIGN_IN_CLIENT_ID'),
+        'additional_client_ids' => env('GOOGLE_SIGN_IN_ADDITIONAL_CLIENT_IDS', ''),
     ],
 
     'google_maps' => [
