@@ -96,6 +96,43 @@ class AdminSupportContentController extends Controller
         return back()->with('status', 'FAQ deleted.');
     }
 
+    public function previewPage(Request $request, ContentPage $page): View
+    {
+        abort_unless(in_array($page->slug, ['terms', 'privacy', 'account-deletion'], true), 404);
+
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:160'],
+            'content_html' => ['required', 'string', 'max:100000'],
+        ]);
+
+        $html = LegalHtml::sanitize($validated['content_html']);
+        if ($this->sectionsFromLegalHtml($html) === []) {
+            throw ValidationException::withMessages([
+                'content_html' => ['Add content before previewing.'],
+            ]);
+        }
+
+        $previewPage = clone $page;
+        $previewPage->title = trim($validated['title']);
+
+        $support = ContentPage::query()->where('slug', 'support')->first();
+        $supportEmail = data_get($support?->content, 'support_email', config('mail.from.address'));
+
+        return view('public.legal', [
+            'page' => $previewPage,
+            'slug' => match ($page->slug) {
+                'terms' => 'terms-and-conditions',
+                'privacy' => 'privacy-policy',
+                default => 'account-deletion',
+            },
+            'html' => $html,
+            'supportEmail' => is_string($supportEmail) && filter_var($supportEmail, FILTER_VALIDATE_EMAIL)
+                ? $supportEmail
+                : null,
+            'isPreview' => true,
+        ]);
+    }
+
     public function updatePage(Request $request, ContentPage $page): RedirectResponse
     {
         abort_unless(in_array($page->slug, ['terms', 'privacy', 'account-deletion'], true), 404);
