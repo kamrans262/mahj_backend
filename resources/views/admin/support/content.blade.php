@@ -140,7 +140,7 @@ document.querySelectorAll('[data-rich-editor-form]').forEach((form) => {
             let value = button.dataset.value || null;
             if (button.dataset.command === 'createLink') {
                 value = window.prompt('Enter a full https:// URL or mailto: address');
-                if (!value || !/^(https?:\/\/|mailto:)/i.test(value.trim())) return;
+                if (!value || !/^(https:\/\/|mailto:)/i.test(value.trim())) return;
                 value = value.trim();
             }
             document.execCommand(button.dataset.command, false, value);
