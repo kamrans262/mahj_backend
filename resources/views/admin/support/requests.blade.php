@@ -13,7 +13,7 @@
 <div class="toolbar">
     <div>
         <div class="card-title">Support inbox</div>
-        <div class="card-copy">Search by user, email, topic or message and manage request status. Verify account ownership before deleting any account.</div>
+        <div class="card-copy">Search by user, email, topic or message and manage request status. Verify account ownership before deleting any account. Closing a request does not delete the account.</div>
     </div>
     <form class="search" method="get" action="{{ route('admin.support.requests') }}">
         <input class="input" name="search" value="{{ $search }}" placeholder="Search support">
