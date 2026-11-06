@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ContentFaq;
 use App\Models\ContentPage;
 use App\Models\SupportRequest;
+use App\Support\LegalHtml;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -24,6 +25,7 @@ class AdminSupportContentController extends Controller
             ->when($search !== '', fn ($query) => $query->where(function ($query) use ($search): void {
                 $query->where('topic', 'like', "%{$search}%")
                     ->orWhere('message', 'like', "%{$search}%")
+                    ->orWhere('requester_email', 'like', "%{$search}%")
                     ->orWhereHas('user', fn ($query) => $query
                         ->where('name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%"));
@@ -67,6 +69,7 @@ class AdminSupportContentController extends Controller
             'faqs' => ContentFaq::query()->orderBy('sort_order')->orderBy('id')->get(),
             'terms' => ContentPage::query()->where('slug', 'terms')->first(),
             'privacy' => ContentPage::query()->where('slug', 'privacy')->first(),
+            'accountDeletion' => ContentPage::query()->where('slug', 'account-deletion')->first(),
             'support' => ContentPage::query()->where('slug', 'support')->first(),
         ]);
     }
@@ -95,7 +98,7 @@ class AdminSupportContentController extends Controller
 
     public function updatePage(Request $request, ContentPage $page): RedirectResponse
     {
-        abort_unless(in_array($page->slug, ['terms', 'privacy'], true), 404);
+        abort_unless(in_array($page->slug, ['terms', 'privacy', 'account-deletion'], true), 404);
 
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:160'],
@@ -143,33 +146,7 @@ class AdminSupportContentController extends Controller
 
     private function sanitizeLegalHtml(string $html): string
     {
-        $allowed = '<h2><h3><p><div><strong><b><em><i><ul><ol><li><br>';
-        $clean = strip_tags(trim($html), $allowed);
-
-        $clean = preg_replace_callback(
-            '/<\s*(\/?)\s*(h2|h3|p|div|strong|b|em|i|ul|ol|li|br)\b[^>]*>/i',
-            static function (array $matches): string {
-                $closing = $matches[1] === '/';
-                $tag = strtolower($matches[2]);
-                $tag = match ($tag) {
-                    'b' => 'strong',
-                    'i' => 'em',
-                    'div' => 'p',
-                    default => $tag,
-                };
-
-                if ($tag === 'br') {
-                    return '<br>';
-                }
-
-                return $closing ? "</{$tag}>" : "<{$tag}>";
-            },
-            $clean,
-        );
-
-        $clean = preg_replace('/<p>\s*<\/p>/i', '', (string) $clean);
-
-        return trim((string) $clean);
+        return LegalHtml::sanitize($html);
     }
 
     private function sectionsFromLegalHtml(string $html): array
