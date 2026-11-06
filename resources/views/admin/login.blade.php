@@ -27,8 +27,7 @@
             <button class="btn" type="submit">Sign in to Admin</button>
             <nav class="legal-links" aria-label="Public legal pages">
                 <a href="{{ route('public.terms') }}">Terms &amp; Conditions</a><span aria-hidden="true">|</span>
-                <a href="{{ route('public.privacy') }}">Privacy Policy</a><span aria-hidden="true">|</span>
-                <a href="{{ route('public.account-deletion') }}">Account Deletion</a>
+                <a href="{{ route('public.privacy') }}">Privacy Policy</a>
             </nav>
         </form>
     </section>
