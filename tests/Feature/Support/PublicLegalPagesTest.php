@@ -76,7 +76,7 @@ class PublicLegalPagesTest extends TestCase
             ->patch("/admin/content/pages/{$page->id}", [
                 'title' => 'Tampered',
                 'content_html' => '<h2>Incorrect</h2>',
-            ])->assertForbidden();
+            ])->assertRedirect(route('admin.login'));
     }
 
     public function test_public_user_can_request_deletion_without_authentication_but_not_delete_account(): void
