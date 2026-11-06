@@ -1,7 +1,7 @@
 @extends('admin.layout')
 
 @section('title', 'Content')
-@section('subtitle', 'Manage FAQs, legal content and the support email shown in the app.')
+@section('subtitle', 'Manage FAQs, legal content and the support email shown in the app and on public pages.')
 
 @section('content')
 <div class="grid2">
@@ -62,9 +62,10 @@
     @endforelse
 </div>
 
-@foreach([['page' => $terms, 'heading' => 'Terms & Conditions'], ['page' => $privacy, 'heading' => 'Privacy Policy']] as $item)
+@foreach([['page' => $terms, 'heading' => 'Terms & Conditions', 'url' => route('public.terms')], ['page' => $privacy, 'heading' => 'Privacy Policy', 'url' => route('public.privacy')], ['page' => $accountDeletion, 'heading' => 'Account Deletion', 'url' => route('public.account-deletion')]] as $item)
     <div class="card" style="padding:18px;margin-top:16px">
         <div class="card-title">{{ $item['heading'] }}</div>
+        <div class="card-copy"><a href="{{ $item['url'] }}" target="_blank" rel="noopener noreferrer" style="color:var(--orange)">View public page</a></div>
         <div class="card-copy" style="margin-bottom:14px">Edit the content visually. Use Heading for section titles, then format body text with bold, italic and lists as needed.</div>
         @if($item['page'])
             @php
@@ -91,6 +92,7 @@
                             <span class="rich-editor-divider"></span>
                             <button type="button" data-command="bold"><b>B</b></button>
                             <button type="button" data-command="italic"><i>I</i></button>
+                            <button type="button" data-command="createLink">Link</button>
                             <button type="button" data-command="insertUnorderedList">• List</button>
                             <button type="button" data-command="insertOrderedList">1. List</button>
                             <button type="button" data-command="removeFormat">Clear</button>
@@ -98,7 +100,7 @@
                         <div class="rich-editor" contenteditable="true" spellcheck="true" data-rich-editor>{!! $editorHtml !!}</div>
                     </div>
                     <textarea name="content_html" data-rich-editor-input hidden>{{ $editorHtml }}</textarea>
-                    <small>Headings become bold section titles in the app. Bold, italic and list formatting are preserved when published.</small>
+                    <small>Changes appear on the public page after publishing. Terms and Privacy updates also flow to the existing app. Links must use https:// or mailto:.</small>
                 </div>
                 <div style="margin-top:14px"><button class="btn" type="submit">Publish {{ $item['heading'] }}</button></div>
             </form>
@@ -132,11 +134,13 @@ document.querySelectorAll('[data-rich-editor-form]').forEach((form) => {
         button.addEventListener('mousedown', (event) => event.preventDefault());
         button.addEventListener('click', () => {
             editor.focus();
-            document.execCommand(
-                button.dataset.command,
-                false,
-                button.dataset.value || null
-            );
+            let value = button.dataset.value || null;
+            if (button.dataset.command === 'createLink') {
+                value = window.prompt('Enter a full https:// URL or mailto: address');
+                if (!value || !/^(https?:\/\/|mailto:)/i.test(value.trim())) return;
+                value = value.trim();
+            }
+            document.execCommand(button.dataset.command, false, value);
         });
     });
 
