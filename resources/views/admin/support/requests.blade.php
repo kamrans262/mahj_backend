@@ -1,7 +1,7 @@
 @extends('admin.layout')
 
 @section('title', 'Support Requests')
-@section('subtitle', 'Review support and problem reports submitted from the Mahj app.')
+@section('subtitle', 'Review app support reports and public account-deletion requests.')
 
 @section('content')
 <section class="stats">
@@ -13,7 +13,7 @@
 <div class="toolbar">
     <div>
         <div class="card-title">Support inbox</div>
-        <div class="card-copy">Search by user, topic or message and manage request status.</div>
+        <div class="card-copy">Search by user, email, topic or message and manage request status. Verify account ownership before deleting any account. Closing a request does not delete the account.</div>
     </div>
     <form class="search" method="get" action="{{ route('admin.support.requests') }}">
         <input class="input" name="search" value="{{ $search }}" placeholder="Search support">
@@ -37,6 +37,9 @@
                         @if($item->user)
                             <a href="{{ route('admin.users.show', $item->user) }}"><b>{{ $item->user->name }}</b></a>
                             <div style="color:#667085;font-size:10px;margin-top:3px">{{ $item->user->email }}</div>
+                        @elseif($item->requester_email)
+                            <b>{{ $item->requester_email }}</b>
+                            <div style="color:#B54708;font-size:10px;margin-top:3px">Public request · identity not verified</div>
                         @else
                             <span>Deleted user</span>
                         @endif

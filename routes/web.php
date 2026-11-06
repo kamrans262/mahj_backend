@@ -6,9 +6,20 @@ use App\Http\Controllers\AdminInvitationController;
 use App\Http\Controllers\AdminMatchController;
 use App\Http\Controllers\AdminSportController;
 use App\Http\Controllers\AdminSupportContentController;
+use App\Http\Controllers\PublicLegalController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/admin');
+
+// Public store-review and account-management pages; no admin sign-in required.
+Route::get('/terms-and-conditions', [PublicLegalController::class, 'show'])
+    ->defaults('slug', 'terms-and-conditions')->name('public.terms');
+Route::get('/privacy-policy', [PublicLegalController::class, 'show'])
+    ->defaults('slug', 'privacy-policy')->name('public.privacy');
+Route::get('/account-deletion', [PublicLegalController::class, 'show'])
+    ->defaults('slug', 'account-deletion')->name('public.account-deletion');
+Route::post('/account-deletion', [PublicLegalController::class, 'requestAccountDeletion'])
+    ->middleware('throttle:3,10')->name('public.account-deletion.request');
 
 Route::view('/billing/success', 'billing.success')->name('billing.success');
 Route::view('/billing/cancel', 'billing.cancel')->name('billing.cancel');
@@ -48,6 +59,7 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::post('/content/faqs', [AdminSupportContentController::class, 'storeFaq'])->name('content.faqs.store');
         Route::patch('/content/faqs/{faq}', [AdminSupportContentController::class, 'updateFaq'])->name('content.faqs.update');
         Route::delete('/content/faqs/{faq}', [AdminSupportContentController::class, 'deleteFaq'])->name('content.faqs.delete');
+        Route::patch('/content/pages/{page}/preview', [AdminSupportContentController::class, 'previewPage'])->name('content.pages.preview');
         Route::patch('/content/pages/{page}', [AdminSupportContentController::class, 'updatePage'])->name('content.pages.update');
         Route::patch('/content/support-settings', [AdminSupportContentController::class, 'updateSupportSettings'])->name('content.support.update');
 
