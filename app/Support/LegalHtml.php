@@ -58,6 +58,6 @@ final class LegalHtml
             return false;
         }
 
-        return in_array(strtolower((string) parse_url($url, PHP_URL_SCHEME)), ['http', 'https'], true);
+        return in_array(strtolower((string) parse_url($url, PHP_URL_SCHEME)), ['https'], true);
     }
 }
