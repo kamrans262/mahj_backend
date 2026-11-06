@@ -53,6 +53,16 @@ class PublicLegalPagesTest extends TestCase
             ->assertSee('href="'.route('public.account-deletion').'"', false);
 
         $this->actingAs($admin)
+            ->patch("/admin/content/pages/{$page->id}/preview", [
+                'title' => 'Draft only',
+                'content_html' => '<h2>Preview</h2><p>Not published yet.</p>',
+            ])->assertOk()
+            ->assertSeeText('Unpublished preview')
+            ->assertSeeText('Not published yet.');
+
+        $this->assertNotSame('Draft only', $page->fresh()->title);
+
+        $this->actingAs($admin)
             ->patch("/admin/content/pages/{$page->id}", [
                 'title' => 'Delete your Mahj account',
                 'content_html' => '<h2>Request help</h2><p>Email <a href="mailto:help@example.org" onclick="alert(1)">support</a>.</p><p><a href="javascript:alert(1)">bad link</a></p><script>alert(2)</script>',
