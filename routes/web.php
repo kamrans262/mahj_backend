@@ -7,9 +7,13 @@ use App\Http\Controllers\AdminMatchController;
 use App\Http\Controllers\AdminSportController;
 use App\Http\Controllers\AdminSupportContentController;
 use App\Http\Controllers\PublicLegalController;
+use App\Http\Controllers\PublicSiteController;
 use Illuminate\Support\Facades\Route;
 
-Route::redirect('/', '/admin');
+Route::get('/', [PublicSiteController::class, 'home'])->name('public.home');
+Route::get('/contact-us', [PublicSiteController::class, 'contact'])->name('public.contact');
+Route::post('/contact-us', [PublicSiteController::class, 'submitContact'])
+    ->middleware('throttle:5,10')->name('public.contact.submit');
 
 // Public store-review and account-management pages; no admin sign-in required.
 Route::get('/terms-and-conditions', [PublicLegalController::class, 'show'])
