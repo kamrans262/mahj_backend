@@ -38,7 +38,7 @@ class PublicLegalPagesTest extends TestCase
         $this->get('/admin/login')->assertOk()
             ->assertSee('href="'.route('public.terms').'"', false)
             ->assertSee('href="'.route('public.privacy').'"', false)
-            ->assertSee('href="'.route('public.account-deletion').'"', false);
+            ->assertDontSee('href="'.route('public.account-deletion').'"', false);
     }
 
     public function test_admin_can_publish_all_three_pages_and_public_page_sanitizes_links(): void
