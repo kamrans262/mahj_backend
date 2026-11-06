@@ -6,9 +6,20 @@ use App\Http\Controllers\AdminInvitationController;
 use App\Http\Controllers\AdminMatchController;
 use App\Http\Controllers\AdminSportController;
 use App\Http\Controllers\AdminSupportContentController;
+use App\Http\Controllers\PublicLegalController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/admin');
+
+// Public store-review and account-management pages; no admin sign-in required.
+Route::get('/terms-and-conditions', [PublicLegalController::class, 'show'])
+    ->defaults('slug', 'terms-and-conditions')->name('public.terms');
+Route::get('/privacy-policy', [PublicLegalController::class, 'show'])
+    ->defaults('slug', 'privacy-policy')->name('public.privacy');
+Route::get('/account-deletion', [PublicLegalController::class, 'show'])
+    ->defaults('slug', 'account-deletion')->name('public.account-deletion');
+Route::post('/account-deletion', [PublicLegalController::class, 'requestAccountDeletion'])
+    ->middleware('throttle:3,10')->name('public.account-deletion.request');
 
 Route::view('/billing/success', 'billing.success')->name('billing.success');
 Route::view('/billing/cancel', 'billing.cancel')->name('billing.cancel');
