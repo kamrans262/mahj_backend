@@ -9,6 +9,7 @@ class SupportRequest extends Model
 {
     protected $fillable = [
         'user_id',
+        'requester_email',
         'topic',
         'message',
         'screenshot_path',
