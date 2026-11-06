@@ -54,6 +54,8 @@ class PublicLegalController extends Controller
 
     public function requestAccountDeletion(Request $request): RedirectResponse
     {
+        $request->merge(['email' => trim((string) $request->input('email'))]);
+
         $validated = $request->validate([
             'email' => ['required', 'email:rfc', 'max:255'],
             'note' => ['nullable', 'string', 'max:2000'],
