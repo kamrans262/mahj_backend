@@ -1,7 +1,7 @@
 @extends('admin.layout')
 
 @section('title', 'Support Requests')
-@section('subtitle', 'Review app support reports and public account-deletion requests.')
+@section('subtitle', 'Review app support reports, public website contacts, and account-deletion requests.')
 
 @section('content')
 <section class="stats">
@@ -39,7 +39,11 @@
                             <div style="color:#667085;font-size:10px;margin-top:3px">{{ $item->user->email }}</div>
                         @elseif($item->requester_email)
                             <b>{{ $item->requester_email }}</b>
-                            <div style="color:#B54708;font-size:10px;margin-top:3px">Public request · identity not verified</div>
+                            @if($item->topic === 'account' && str_starts_with($item->message, 'Public account deletion request.'))
+                                <div style="color:#B54708;font-size:10px;margin-top:3px">Public request · identity not verified</div>
+                            @else
+                                <div style="color:#667085;font-size:10px;margin-top:3px">Website contact</div>
+                            @endif
                         @else
                             <span>Deleted user</span>
                         @endif
