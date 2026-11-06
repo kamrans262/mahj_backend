@@ -12,7 +12,7 @@ class PublicLegalPagesTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_three_public_pages_are_available_without_login_and_linked_from_admin_login(): void
+    public function test_three_public_pages_are_available_and_admin_login_links_to_two_policies(): void
     {
         foreach ([
             'terms' => ['Terms & Conditions', 'Terms for Mahj Around Town'],
