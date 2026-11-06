@@ -59,6 +59,7 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::post('/content/faqs', [AdminSupportContentController::class, 'storeFaq'])->name('content.faqs.store');
         Route::patch('/content/faqs/{faq}', [AdminSupportContentController::class, 'updateFaq'])->name('content.faqs.update');
         Route::delete('/content/faqs/{faq}', [AdminSupportContentController::class, 'deleteFaq'])->name('content.faqs.delete');
+        Route::patch('/content/pages/{page}/preview', [AdminSupportContentController::class, 'previewPage'])->name('content.pages.preview');
         Route::patch('/content/pages/{page}', [AdminSupportContentController::class, 'updatePage'])->name('content.pages.update');
         Route::patch('/content/support-settings', [AdminSupportContentController::class, 'updateSupportSettings'])->name('content.support.update');
 
