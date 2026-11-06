@@ -102,7 +102,10 @@
                     <textarea name="content_html" data-rich-editor-input hidden>{{ $editorHtml }}</textarea>
                     <small>Changes appear on the public page after publishing. Terms and Privacy updates also flow to the existing app. Links must use https:// or mailto:.</small>
                 </div>
-                <div style="margin-top:14px"><button class="btn" type="submit">Publish {{ $item['heading'] }}</button></div>
+                <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+                    <button class="btn btn-secondary" type="submit" formaction="{{ route('admin.content.pages.preview', $item['page']) }}" formtarget="_blank">Preview draft</button>
+                    <button class="btn" type="submit">Publish {{ $item['heading'] }}</button>
+                </div>
             </form>
         @else
             <div class="empty">Run the M10 content seeder to create this page.</div>
