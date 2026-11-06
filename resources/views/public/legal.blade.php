@@ -58,9 +58,13 @@
 <main>
     <article class="panel">
         <h1>{{ $page->title }}</h1>
-        <p class="updated">Last updated: {{ $page->published_at?->format('F j, Y') }}</p>
+        @if($isPreview ?? false)
+            <p class="updated"><strong style="color:#EC5D01">Unpublished preview</strong> · Your edits have not been saved.</p>
+        @else
+            <p class="updated">Last updated: {{ $page->published_at?->format('F j, Y') }}</p>
+        @endif
         <div class="legal-content">{!! $html !!}</div>
-        @if($slug === 'account-deletion')
+        @if($slug === 'account-deletion' && !($isPreview ?? false))
             <section class="request" aria-labelledby="deletion-request-title">
                 <h2 id="deletion-request-title">Request account deletion</h2>
                 <p class="hint">If you cannot access Mahj Around Town, use this form to request deletion. Enter the email associated with your account. We will verify your identity before taking any action. Sending this form does not immediately delete your account.</p>
